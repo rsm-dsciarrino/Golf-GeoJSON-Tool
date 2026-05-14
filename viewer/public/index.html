@@ -11,6 +11,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Courier New', Courier, monospace; background: #000; }
     #map { position: fixed; inset: 0; }
+    #map.midpoint-active { cursor: crosshair; }
 
     .panel {
       position: absolute;
@@ -22,95 +23,146 @@
       z-index: 10;
     }
 
+    /* ── Filters ── */
+    #filters {
+      top: 10px; left: 10px;
+      display: flex; align-items: center; gap: 14px;
+      padding: 8px 14px;
+    }
+    .filter-group { display: flex; align-items: center; gap: 6px; }
+    .filter-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; }
+    select.filter-select {
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      background-color: #0a0a0a;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23555'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 7px center;
+      border: 1px solid #2e2e2e; color: #aaa;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      padding: 4px 26px 4px 8px; cursor: pointer; outline: none; min-width: 110px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    select.filter-select:hover { border-color: #444; color: #ccc; }
+    select.filter-select option { background: #111; color: #aaa; }
+
+    /* ── Legend ── */
     #legend {
-      top: 10px;
-      right: 10px;
-      min-width: 190px;
-      max-width: 260px;
-      max-height: 60vh;
-      overflow-y: auto;
+      top: 10px; right: 10px;
+      min-width: 200px; max-width: 270px; max-height: 75vh; overflow-y: auto;
     }
-
-    #legend-header {
-      padding: 7px 12px;
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      color: #555;
-      text-transform: uppercase;
-      border-bottom: 1px solid #1c1c1c;
+    .legend-section-header {
+      padding: 6px 12px 4px; font-size: 10px; letter-spacing: 0.12em;
+      color: #444; text-transform: uppercase; border-bottom: 1px solid #1c1c1c;
     }
+    .legend-section-header:not(:first-child) { border-top: 1px solid #1c1c1c; }
+    #legend-features, #legend-midpoints { padding: 4px 0; }
+    .legend-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 12px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; opacity: 0.9; margin-top: 3px; }
+    .legend-name   { color: #999; font-size: 11px; }
+    .legend-sub    { color: #444; font-size: 9px; }
+    .legend-coords { color: #444; font-size: 9px; white-space: nowrap; }
+    .legend-empty  { padding: 6px 12px; color: #333; font-size: 11px; }
 
-    #legend-list { padding: 4px 0; }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 12px;
-    }
-
-    .legend-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      opacity: 0.9;
-    }
-
-    .legend-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: #999;
-    }
-
-    .legend-empty {
-      padding: 8px 12px;
-      color: #3a3a3a;
-    }
-
-    #clear-btn {
-      bottom: 36px;
-      right: 10px;
-      padding: 7px 14px;
-      cursor: pointer;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 11px;
-      color: #888;
-      background: rgba(8, 8, 8, 0.9);
-      border: 1px solid #252525;
+    /* ── Buttons ── */
+    .ctrl-btn {
+      padding: 7px 14px; cursor: pointer; letter-spacing: 0.08em;
+      text-transform: uppercase; font-size: 11px;
       font-family: 'Courier New', Courier, monospace;
-      transition: color 0.15s, border-color 0.15s;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
     }
+    #clear-midpoints-btn { bottom: 116px; right: 10px; color: #555; border: 1px solid #1e1e1e; font-size: 10px; padding: 5px 10px; }
+    #clear-midpoints-btn:hover { color: #888; border-color: #333; }
+    #midpoint-btn { bottom: 80px; right: 10px; color: #888; border: 1px solid #252525; }
+    #midpoint-btn:hover { color: #00d4ff; border-color: #003a4a; }
+    #midpoint-btn.active { color: #00d4ff; border-color: #00d4ff; background: rgba(0,212,255,0.08); }
+    #clear-btn { bottom: 36px; right: 10px; color: #888; border: 1px solid #252525; }
+    #clear-btn:hover { color: #ff4444; border-color: #552222; }
+    #download-btn { bottom: 36px; left: 10px; color: #888; border: 1px solid #252525; }
+    #download-btn:hover { color: #aaffaa; border-color: #2a5a2a; }
 
-    #clear-btn:hover {
-      color: #ff4444;
-      border-color: #552222;
+    #status { bottom: 10px; left: 10px; padding: 5px 10px; font-size: 10px; color: #333; letter-spacing: 0.06em; pointer-events: none; }
+
+    /* ── Name input panel ── */
+    #name-panel {
+      bottom: 80px; left: 50%; transform: translateX(-50%);
+      display: none; align-items: center; gap: 8px; padding: 9px 12px; white-space: nowrap;
     }
+    #name-panel label { font-size: 10px; color: #555; letter-spacing: 0.08em; text-transform: uppercase; }
+    #midpoint-name-input {
+      background: #0a0a0a; border: 1px solid #333; color: #ccc;
+      font-family: 'Courier New', Courier, monospace; font-size: 12px;
+      padding: 4px 8px; width: 200px; outline: none;
+    }
+    #midpoint-name-input:focus { border-color: #00d4ff; }
+    .name-btn {
+      padding: 4px 10px; font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      cursor: pointer; border: 1px solid #333; background: transparent; color: #888;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    #name-save-btn { color: #00d4ff; border-color: #003a4a; }
+    #name-save-btn:hover { background: rgba(0,212,255,0.1); }
+    #name-cancel-btn:hover { color: #ccc; }
 
-    #status {
-      bottom: 10px;
-      left: 10px;
-      padding: 5px 10px;
-      font-size: 10px;
-      color: #444;
-      letter-spacing: 0.06em;
-      pointer-events: none;
+    /* ── Midpoint markers ── */
+    .midpoint-marker { position: relative; width: 10px; height: 10px; pointer-events: none; }
+    .marker-pin { width: 10px; height: 10px; background: #00d4ff; border: 2px solid rgba(0,0,0,0.7); border-radius: 50%; }
+    .marker-label {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      background: rgba(8,8,8,0.88); color: #00d4ff;
+      font-size: 10px; font-family: 'Courier New', Courier, monospace;
+      padding: 2px 6px; white-space: nowrap; border: 1px solid #0a2a2a;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div class="panel" id="legend">
-    <div id="legend-header">Features</div>
-    <div id="legend-list">
-      <div class="legend-empty">no features loaded</div>
+  <div class="panel" id="filters">
+    <div class="filter-group">
+      <span class="filter-label">Hole</span>
+      <select class="filter-select" id="hole-select">
+        <option value="all">All Holes</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <select class="filter-select" id="type-select">
+        <option value="all">All Types</option>
+      </select>
     </div>
   </div>
 
-  <button class="panel" id="clear-btn">Clear Map</button>
+  <div class="panel" id="legend">
+    <div class="legend-section-header">Features</div>
+    <div id="legend-features"><div class="legend-empty">no features loaded</div></div>
+    <div class="legend-section-header">Midpoints</div>
+    <div id="legend-midpoints"><div class="legend-empty">no midpoints placed</div></div>
+  </div>
+
+  <button class="panel ctrl-btn" id="download-btn">Export GeoJSON</button>
+
+  <button class="panel ctrl-btn" id="clear-midpoints-btn">Clear Midpoints</button>
+  <button class="panel ctrl-btn" id="midpoint-btn">+ Midpoint</button>
+  <button class="panel ctrl-btn" id="clear-btn">Clear Map</button>
+
+  <div class="panel" id="name-panel">
+    <div class="filter-group">
+      <span class="filter-label">Hole</span>
+      <select class="filter-select" id="mp-hole-select" style="min-width:60px"></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <select class="filter-select" id="mp-type-select" style="min-width:100px">
+        <option value="tee_box">Tee Box</option>
+        <option value="fairway">Fairway</option>
+        <option value="green">Green</option>
+        <option value="bunker">Bunker</option>
+      </select>
+    </div>
+    <input type="text" id="midpoint-name-input" autocomplete="off" spellcheck="false" style="width:180px">
+    <button class="name-btn" id="name-save-btn">Save</button>
+    <button class="name-btn" id="name-cancel-btn">Cancel</button>
+  </div>
+
   <div class="panel" id="status">LIVE</div>
 
   <script>
@@ -124,100 +176,339 @@
       zoom: 2,
     });
 
-    function updateLegend(geojson) {
-      const list = document.getElementById('legend-list');
+    // ── Color mapping ──
+    const TYPE_COLORS = {
+      fairway: '#4a7c3f', green: '#2d6e2d', tee_box: '#8b6914',
+      bunker: '#c8b560', water: '#1a6b9e', rough: '#3a5e2a',
+      path: '#888888', hole_corridor: '#3a6a3a',
+      pin: '#ff3333', tee_center: '#c8a055',
+      target_point: '#00d4ff', layup_point: '#ff8800',
+      green_front: '#5aae5a', green_center: '#5aae5a', green_back: '#5aae5a',
+    };
+
+    function featureColor(f) {
+      const p = f.properties || {};
+      return p['feature-color'] || TYPE_COLORS[p.feature_type] || '#00ff88';
+    }
+
+    const colorExpr = ['coalesce', ['get', 'feature-color'],
+      ['match', ['get', 'feature_type'],
+        'fairway', '#4a7c3f', 'green', '#2d6e2d', 'tee_box', '#8b6914',
+        'bunker', '#c8b560', 'water', '#1a6b9e', 'rough', '#3a5e2a',
+        'path', '#888888', 'hole_corridor', '#3a6a3a', '#00ff88']];
+
+    const pointColorExpr = ['coalesce', ['get', 'feature-color'],
+      ['match', ['get', 'feature_type'],
+        'pin', '#ff3333', 'tee_center', '#c8a055',
+        'target_point', '#00d4ff', 'layup_point', '#ff8800',
+        'green_front', '#5aae5a', 'green_center', '#5aae5a', 'green_back', '#5aae5a',
+        '#00ff88']];
+
+    const pointRadiusExpr = ['match', ['get', 'feature_type'],
+      'target_point', 9, 'layup_point', 9, 'pin', 7, 6];
+
+    // ── Base layer filters (preserved when user filters are applied) ──
+    const BASE_FILTERS = {
+      'golf-corridor-fill': ['==', ['get', 'feature_type'], 'hole_corridor'],
+      'golf-corridor-line': ['==', ['get', 'feature_type'], 'hole_corridor'],
+      'golf-fill':    ['all', ['==', '$type', 'Polygon'], ['!=', ['get', 'feature_type'], 'hole_corridor']],
+      'golf-outline': ['all', ['==', '$type', 'Polygon'], ['!=', ['get', 'feature_type'], 'hole_corridor']],
+      'golf-circle':  ['==', '$type', 'Point'],
+    };
+
+    // ── State ──
+    let geojsonData  = { type: 'FeatureCollection', features: [] };
+    let midpointMode = false;
+    let pendingLngLat = null;
+    const markerMap  = new Map();
+
+    // ── Filters ──
+    function populateFilters() {
+      const features = geojsonData.features;
+      const holes = [...new Set(features.map(f => f.properties?.hole_number).filter(n => n != null))].sort((a, b) => a - b);
+      const types = [...new Set(features.map(f => f.properties?.feature_type).filter(Boolean))].sort();
+
+      const holeEl = document.getElementById('hole-select');
+      const typeEl = document.getElementById('type-select');
+      const prevHole = holeEl.value;
+      const prevType = typeEl.value;
+
+      holeEl.innerHTML = '<option value="all">All Holes</option>' +
+        holes.map(h => `<option value="${h}"${String(h) === prevHole ? ' selected' : ''}>Hole ${h}</option>`).join('');
+
+      typeEl.innerHTML = '<option value="all">All Types</option>' +
+        types.map(t => `<option value="${t}"${t === prevType ? ' selected' : ''}>${t.replace(/_/g, ' ')}</option>`).join('');
+    }
+
+    function applyFilters() {
+      const hole = document.getElementById('hole-select').value;
+      const type = document.getElementById('type-select').value;
+
+      const holeFilter = hole !== 'all' ? ['==', ['get', 'hole_number'], parseInt(hole)] : null;
+      const typeFilter = type !== 'all' ? ['==', ['get', 'feature_type'], type]          : null;
+
+      Object.entries(BASE_FILTERS).forEach(([id, base]) => {
+        const parts = [base, holeFilter, typeFilter].filter(Boolean);
+        map.setFilter(id, parts.length === 1 ? parts[0] : ['all', ...parts]);
+      });
+
+      // Fit bounds to visible features
+      const visible = geojsonData.features.filter(f => {
+        const p = f.properties || {};
+        return (hole === 'all' || p.hole_number === parseInt(hole)) &&
+               (type === 'all' || p.feature_type === type);
+      });
+      if (visible.length) fitToBounds({ type: 'FeatureCollection', features: visible });
+    }
+
+    document.getElementById('hole-select').addEventListener('change', applyFilters);
+    document.getElementById('type-select').addEventListener('change', applyFilters);
+
+    // ── Legend ──
+    function updateFeatureLegend(geojson) {
+      const list = document.getElementById('legend-features');
       const features = geojson.features || [];
-      if (!features.length) {
-        list.innerHTML = '<div class="legend-empty">no features loaded</div>';
-        return;
-      }
+      if (!features.length) { list.innerHTML = '<div class="legend-empty">no features loaded</div>'; return; }
       list.innerHTML = features.map(f => {
-        const name = f.properties?.name || 'unnamed';
-        const color = f.properties?.['feature-color'] || '#00ff88';
+        const p = f.properties || {};
+        const name  = p.name || p.feature_type || 'unnamed';
+        const sub   = p.feature_type || '';
+        const color = featureColor(f);
         return `<div class="legend-item">
           <span class="legend-dot" style="background:${color}"></span>
-          <span class="legend-name" title="${name}">${name}</span>
+          <div><div class="legend-name">${name}</div>${sub ? `<div class="legend-sub">${sub.replace(/_/g, ' ')}</div>` : ''}</div>
         </div>`;
       }).join('');
     }
 
+    function updateMidpointLegend(pts) {
+      const list = document.getElementById('legend-midpoints');
+      if (!pts.length) { list.innerHTML = '<div class="legend-empty">no midpoints placed</div>'; return; }
+      list.innerHTML = pts.map(p => `
+        <div class="legend-item">
+          <span class="legend-dot" style="background:#00d4ff"></span>
+          <div>
+            <div class="legend-name">${p.name}</div>
+            <div class="legend-coords">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    // ── Fit bounds ──
     function fitToBounds(geojson) {
       const features = geojson.features || [];
       if (!features.length) return;
       const bounds = new mapboxgl.LngLatBounds();
-      function extendCoords(coords) {
-        if (typeof coords[0] === 'number') {
-          bounds.extend(coords);
-        } else {
-          coords.forEach(extendCoords);
-        }
-      }
-      features.forEach(f => {
-        if (f.geometry?.coordinates) extendCoords(f.geometry.coordinates);
-      });
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: 60, maxZoom: 18, duration: 800 });
-      }
+      function ext(c) { typeof c[0] === 'number' ? bounds.extend(c) : c.forEach(ext); }
+      features.forEach(f => { if (f.geometry?.coordinates) ext(f.geometry.coordinates); });
+      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60, maxZoom: 18, duration: 800 });
     }
 
+    // ── Midpoint markers ──
+    function addMarker(name, lat, lng) {
+      if (markerMap.has(name)) markerMap.get(name).remove();
+      const el = document.createElement('div');
+      el.className = 'midpoint-marker';
+      el.innerHTML = `<div class="marker-pin"></div><div class="marker-label">${name}</div>`;
+      const m = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map);
+      markerMap.set(name, m);
+    }
+    function clearMarkers() { markerMap.forEach(m => m.remove()); markerMap.clear(); }
+
+    // ── Save GeoJSON to server ──
+    async function saveGeojson() {
+      await fetch('/geojson', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geojsonData),
+      });
+    }
+
+    // ── Map load ──
     map.on('load', async () => {
-      const res = await fetch('/geojson');
-      const geojson = await res.json();
+      const [gRes, mRes] = await Promise.all([fetch('/geojson'), fetch('/midpoints')]);
+      geojsonData = await gRes.json();
+      const pts   = await mRes.json();
 
-      map.addSource('golf-features', { type: 'geojson', data: geojson });
+      map.addSource('golf-features', { type: 'geojson', data: geojsonData });
 
-      map.addLayer({
-        id: 'golf-fill',
-        type: 'fill',
-        source: 'golf-features',
-        filter: ['==', '$type', 'Polygon'],
+      map.addLayer({ id: 'golf-corridor-fill', type: 'fill', source: 'golf-features',
+        filter: BASE_FILTERS['golf-corridor-fill'],
+        paint: { 'fill-color': '#2a4a2a', 'fill-opacity': 0.10 } });
+
+      map.addLayer({ id: 'golf-corridor-line', type: 'line', source: 'golf-features',
+        filter: BASE_FILTERS['golf-corridor-line'],
+        paint: { 'line-color': '#3a6a3a', 'line-width': 1, 'line-dasharray': [5, 4], 'line-opacity': 0.5 } });
+
+      map.addLayer({ id: 'golf-fill', type: 'fill', source: 'golf-features',
+        filter: BASE_FILTERS['golf-fill'],
+        paint: { 'fill-color': colorExpr, 'fill-opacity': 0.38 } });
+
+      map.addLayer({ id: 'golf-outline', type: 'line', source: 'golf-features',
+        filter: BASE_FILTERS['golf-outline'],
+        paint: { 'line-color': colorExpr, 'line-width': 2 } });
+
+      map.addLayer({ id: 'golf-circle', type: 'circle', source: 'golf-features',
+        filter: BASE_FILTERS['golf-circle'],
         paint: {
-          'fill-color': ['coalesce', ['get', 'feature-color'], '#00ff88'],
-          'fill-opacity': 0.38,
-        },
-      });
-
-      map.addLayer({
-        id: 'golf-outline',
-        type: 'line',
-        source: 'golf-features',
-        filter: ['==', '$type', 'Polygon'],
-        paint: {
-          'line-color': ['coalesce', ['get', 'feature-color'], '#00ff88'],
-          'line-width': 2,
-        },
-      });
-
-      map.addLayer({
-        id: 'golf-circle',
-        type: 'circle',
-        source: 'golf-features',
-        filter: ['==', '$type', 'Point'],
-        paint: {
-          'circle-radius': 8,
-          'circle-color': ['coalesce', ['get', 'feature-color'], '#00ff88'],
-          'circle-stroke-width': 1,
+          'circle-radius': pointRadiusExpr,
+          'circle-color': pointColorExpr,
+          'circle-stroke-width': 1.5,
           'circle-stroke-color': '#000',
-        },
-      });
+        } });
 
-      updateLegend(geojson);
-      fitToBounds(geojson);
+      populateFilters();
+      updateFeatureLegend(geojsonData);
+      fitToBounds(geojsonData);
+      pts.forEach(p => addMarker(p.name, p.lat, p.lng));
+      updateMidpointLegend(pts);
+
+      setupDrag();
     });
 
+    // ── Draggable points ──
+    function setupDrag() {
+      let dragging = false;
+      let dragName = null;
+
+      map.on('mouseenter', 'golf-circle', () => {
+        if (!midpointMode) map.getCanvas().style.cursor = 'grab';
+      });
+      map.on('mouseleave', 'golf-circle', () => {
+        if (!dragging && !midpointMode) map.getCanvas().style.cursor = '';
+      });
+
+      map.on('mousedown', 'golf-circle', (e) => {
+        if (midpointMode) return;
+        e.preventDefault();
+        dragging = true;
+        dragName = e.features[0].properties.name;
+        map.dragPan.disable();
+        map.getCanvas().style.cursor = 'grabbing';
+
+        function onMove(e) {
+          const { lng, lat } = e.lngLat;
+          const idx = geojsonData.features.findIndex(f => f.properties?.name === dragName);
+          if (idx !== -1) {
+            geojsonData.features[idx].geometry.coordinates = [lng, lat];
+            if (geojsonData.features[idx].bbox) geojsonData.features[idx].bbox = [lng, lat, lng, lat];
+            map.getSource('golf-features').setData(geojsonData);
+          }
+        }
+
+        async function onUp() {
+          dragging = false;
+          map.off('mousemove', onMove);
+          map.dragPan.enable();
+          map.getCanvas().style.cursor = 'grab';
+          await saveGeojson();
+        }
+
+        map.on('mousemove', onMove);
+        map.once('mouseup', onUp);
+      });
+    }
+
+    // ── SSE ──
     const evtSource = new EventSource('/events');
-    const statusEl = document.getElementById('status');
+    const statusEl  = document.getElementById('status');
 
     evtSource.addEventListener('geojson-updated', async () => {
-      const res = await fetch('/geojson');
-      const geojson = await res.json();
-      map.getSource('golf-features').setData(geojson);
-      updateLegend(geojson);
-      fitToBounds(geojson);
+      geojsonData = await fetch('/geojson').then(r => r.json());
+      map.getSource('golf-features').setData(geojsonData);
+      populateFilters();
+      applyFilters();
+      updateFeatureLegend(geojsonData);
     });
 
-    evtSource.onopen = () => { statusEl.textContent = 'LIVE'; statusEl.style.color = '#3a3a3a'; };
+    evtSource.onopen  = () => { statusEl.textContent = 'LIVE';            statusEl.style.color = '#333'; };
     evtSource.onerror = () => { statusEl.textContent = 'RECONNECTING...'; statusEl.style.color = '#664422'; };
+
+    // ── Download ──
+    document.getElementById('download-btn').addEventListener('click', () => {
+      const p    = geojsonData.features[0]?.properties || {};
+      const name = [p.course_id, p.hole_number ? `hole${p.hole_number}` : null, 'features']
+                     .filter(Boolean).join('_') + '.geojson';
+      const blob = new Blob([JSON.stringify(geojsonData, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = Object.assign(document.createElement('a'), { href: url, download: name });
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // ── Midpoint name panel setup ──
+    const mpHoleSelect = document.getElementById('mp-hole-select');
+    const mpTypeSelect = document.getElementById('mp-type-select');
+
+    // Populate holes 1–18
+    mpHoleSelect.innerHTML = Array.from({ length: 18 }, (_, i) =>
+      `<option value="${i + 1}">Hole ${i + 1}</option>`
+    ).join('');
+
+    function generateMidpointName() {
+      const hole = mpHoleSelect.value;
+      const type = mpTypeSelect.value;
+      const base = `hole_${hole}_${type}`;
+      // Auto-increment if name already taken
+      const existing = Array.from(markerMap.keys());
+      if (!existing.includes(base)) return base;
+      let n = 2;
+      while (existing.includes(`${base}_${n}`)) n++;
+      return `${base}_${n}`;
+    }
+
+    function syncMidpointName() {
+      document.getElementById('midpoint-name-input').value = generateMidpointName();
+    }
+
+    mpHoleSelect.addEventListener('change', syncMidpointName);
+    mpTypeSelect.addEventListener('change', syncMidpointName);
+
+    // ── Midpoint mode ──
+    const midpointBtn = document.getElementById('midpoint-btn');
+    const namePanel   = document.getElementById('name-panel');
+    const nameInput   = document.getElementById('midpoint-name-input');
+
+    function setMidpointMode(active) {
+      midpointMode = active;
+      midpointBtn.classList.toggle('active', active);
+      document.getElementById('map').classList.toggle('midpoint-active', active);
+      map.getCanvas().style.cursor = active ? 'crosshair' : '';
+      if (!active) { namePanel.style.display = 'none'; pendingLngLat = null; }
+    }
+    midpointBtn.addEventListener('click', () => setMidpointMode(!midpointMode));
+
+    map.on('click', (e) => {
+      if (!midpointMode) return;
+      pendingLngLat = e.lngLat;
+      syncMidpointName();
+      namePanel.style.display = 'flex';
+      nameInput.focus(); nameInput.select();
+    });
+
+    async function saveMidpoint() {
+      const name = nameInput.value.trim();
+      if (!name || !pendingLngLat) return;
+      const { lat, lng } = pendingLngLat;
+      await fetch('/midpoints', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, lat, lng }) });
+      addMarker(name, lat, lng);
+      updateMidpointLegend(await fetch('/midpoints').then(r => r.json()));
+      nameInput.value = '';
+      namePanel.style.display = 'none';
+      pendingLngLat = null;
+    }
+
+    document.getElementById('name-save-btn').addEventListener('click', saveMidpoint);
+    document.getElementById('name-cancel-btn').addEventListener('click', () => { namePanel.style.display = 'none'; pendingLngLat = null; });
+    nameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveMidpoint();
+      if (e.key === 'Escape') { namePanel.style.display = 'none'; pendingLngLat = null; }
+    });
+
+    document.getElementById('clear-midpoints-btn').addEventListener('click', async () => {
+      await fetch('/midpoints', { method: 'DELETE' });
+      clearMarkers(); updateMidpointLegend([]);
+    });
 
     document.getElementById('clear-btn').addEventListener('click', async () => {
       await fetch('/geojson', { method: 'DELETE' });

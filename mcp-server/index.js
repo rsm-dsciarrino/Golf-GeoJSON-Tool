@@ -47,6 +47,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       description: 'Clear all features from the map',
       inputSchema: { type: 'object', properties: {} },
     },
+    {
+      name: 'get_midpoints',
+      description: 'Get the midpoints placed by the user on the map — use these as anchor coordinates when tracing GeoJSON features from a satellite image',
+      inputSchema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'clear_midpoints',
+      description: 'Clear all midpoints from the map',
+      inputSchema: { type: 'object', properties: {} },
+    },
   ],
 }));
 
@@ -91,6 +101,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'clear_map': {
       await fetch(`${VIEWER_URL}/geojson`, { method: 'DELETE' });
       return { content: [{ type: 'text', text: 'Map cleared.' }] };
+    }
+
+    case 'get_midpoints': {
+      const res = await fetch(`${VIEWER_URL}/midpoints`);
+      const data = await res.json();
+      if (!data.length) {
+        return { content: [{ type: 'text', text: 'No midpoints placed yet.' }] };
+      }
+      const lines = data.map(m => `${m.name}: [${m.lat}, ${m.lng}]`).join('\n');
+      return { content: [{ type: 'text', text: lines }] };
+    }
+
+    case 'clear_midpoints': {
+      await fetch(`${VIEWER_URL}/midpoints`, { method: 'DELETE' });
+      return { content: [{ type: 'text', text: 'Midpoints cleared.' }] };
     }
 
     default:

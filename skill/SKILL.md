@@ -1,81 +1,140 @@
 ---
 name: golf-geojson
-description: Generate approximate GeoJSON feature geometries for golf course holes
-  from a satellite screenshot, a list of feature names, and provided midpoint
-  coordinates. Use this skill whenever the user provides a golf course image and
-  wants GeoJSON output, or asks Claude to map golf course features, trace hole
-  geometry, or push features to the golf viewer map.
+description: Generate a GeoJSON FeatureCollection for golf course holes from a
+  satellite screenshot and midpoint coordinates. Use this skill whenever the user
+  provides a golf course image and wants GeoJSON output, asks Claude to map golf
+  course features, trace hole geometry, or push features to the golf viewer map.
 ---
 
 # Golf GeoJSON Skill
 
 ## Purpose
-Generate an 80%-accurate GeoJSON FeatureCollection for golf course features by
-visually tracing a satellite image and anchoring shapes to provided midpoint coordinates.
+Generate a production-quality GeoJSON FeatureCollection for a golf hole by visually
+tracing a satellite image and anchoring shapes to provided midpoint coordinates.
 
 ## Inputs Required
-1. **Satellite image** — aerial/overhead view of the hole or course
-2. **Feature list** — names and types of features to trace, e.g.:
-   - hole_1_fairway (polygon)
-   - hole_1_green (polygon)
-   - hole_1_bunker_left (polygon)
-   - hole_1_tee_blue (polygon)
-   - hole_1_water (polygon)
-3. **Midpoints** — lat/lng for each feature, e.g.:
-   - hole_1_fairway: [32.7157, -117.1611]
-   - hole_1_green: [32.7163, -117.1608]
+1. **Satellite image** — aerial/overhead view of the hole
+2. **Midpoints** — call `get_midpoints` to retrieve coordinates the user has placed,
+   e.g. `hole_1_fairway: [32.7157, -117.1611]`
+3. **Course metadata** — course name and ID if known; ask if not provided
 
 ## Scale Calibration
-Before tracing shapes, establish pixel-to-meter scale:
-- Use the two midpoints that are furthest apart
-- Calculate their real-world distance (Haversine formula mentally estimated)
-- Measure the pixel distance between their approximate image locations
-- Derive meters-per-pixel ratio
-- Use this ratio to size all features
+Use the two furthest-apart midpoints to establish pixel-to-meter scale:
+1. Calculate their real-world distance (Haversine, mentally estimated)
+   - 1° lat ≈ 111,000m; 1° lng ≈ 111,000m × cos(latitude)
+2. Measure their pixel separation in the image
+3. Derive meters-per-pixel; use this ratio to size all polygon outlines
 
-If only one midpoint is provided, use these default feature dimensions:
-| Feature type | Typical width | Typical length |
+If only one midpoint is given, use these defaults:
+| Feature       | Typical width | Typical length |
 |---|---|---|
-| Fairway | 35m | 150–400m |
-| Green | 25m | 30m |
-| Tee box | 8m | 12m |
-| Bunker | 12m | 18m |
-| Water hazard | varies | varies |
+| Fairway       | 35m           | 150–400m       |
+| Green         | 25m           | 30m            |
+| Tee box       | 8m            | 14m            |
+| Bunker        | 12m           | 18m            |
+| Water hazard  | varies        | varies         |
+
+## Features to Generate Per Hole
+Generate ALL of the following for every hole:
+
+| Feature type     | Geometry | Description |
+|---|---|---|
+| `tee_box`        | Polygon  | Traced tee markers/box boundary |
+| `tee_center`     | Point    | Back-center of tee box |
+| `fairway`        | Polygon  | Maintained fairway corridor, 15–25 pts |
+| `green`          | Polygon  | Putting surface outline, 12–20 pts |
+| `pin`            | Point    | Default pin at green center |
+| `green_front`    | Point    | Forward edge of green (closest to fairway) |
+| `green_center`   | Point    | Center of putting surface |
+| `green_back`     | Point    | Back edge of green |
+| `hole_corridor`  | Polygon  | Broad playable corridor tee→green including rough; mark `is_approximate: true` |
+| `bunker`         | Polygon  | One feature per bunker, 12–30 pts each |
+| `target_point`   | Point    | Ideal tee shot landing zone (avoid hazards) |
+| `layup_point`    | Point    | Conservative layup option if applicable |
+
+Add `water`, `rough`, or `path` polygons if clearly visible in the image.
 
 ## Tracing Process
-For each feature:
+For each polygon feature:
 1. Locate it visually in the image
-2. Trace its approximate outline as a polygon (6–12 points is enough)
-3. Convert pixel offsets from the midpoint into lat/lng deltas
-   - 1 degree latitude ≈ 111,000m
-   - 1 degree longitude ≈ 111,000m × cos(latitude)
-4. Offset each polygon vertex from the provided midpoint
+2. Trace its outline with enough points to capture the shape:
+   - Simple rectangles (tee box): 4–5 pts
+   - Smooth ovals (green, round bunkers): 12–18 pts
+   - Irregular shapes (fairway, kidney bunkers): 15–30 pts
+3. Convert pixel offsets from the midpoint into lat/lng deltas:
+   - lat_delta = pixel_offset_north × meters_per_pixel / 111000
+   - lng_delta = pixel_offset_east  × meters_per_pixel / (111000 × cos(lat))
+4. Offset each polygon vertex from its provided midpoint coordinate
+5. Always close polygons (first coordinate == last coordinate)
+
+For Point features (tee_center, pin, green markers, target_point, layup_point):
+- Derive from visual position or compute from polygon bounds
+- `green_front` = southernmost green polygon point
+- `green_back`  = northernmost green polygon point
+- `green_center` = centroid of green polygon
+- `pin` = same as green_center by default
 
 ## Output Format
-Return a GeoJSON FeatureCollection. Each feature must have:
-- `type`: "Feature"
-- `geometry.type`: "Polygon" (or "Point" for single markers)
-- `geometry.coordinates`: closed ring (first and last point identical)
-- `properties.name`: feature name from the input list
-- `properties.feature_type`: one of: fairway, green, tee, bunker, water, rough, path
-- `properties.feature-color`: use this color map:
-  - fairway: `#4a7c3f`
-  - green: `#2d6e2d`
-  - tee: `#8b6914`
-  - bunker: `#c8b560`
-  - water: `#1a6b9e`
-  - rough: `#3a5e2a`
-  - path: `#888888`
+Return a GeoJSON FeatureCollection. Every feature must include `bbox`.
+
+### Required properties on every feature
+```json
+{
+  "course_id":     "torrey_pines_north",
+  "course_name":   "Torrey Pines North Course",
+  "hole_number":   1,
+  "feature_type":  "<type from table above>",
+  "name":          "Hole 1 Green",
+  "is_approximate": true,
+  "source":        "ai_trace",
+  "notes":         "Brief description of trace method",
+  "@id":           "<uuid4>"
+}
+```
+
+### Additional properties by feature type
+| Feature type    | Extra properties |
+|---|---|
+| `tee_box`       | `tee` (color: blue/white/red/gold), `par`, `handicap_index`, `yardage` |
+| `tee_center`    | `tee` |
+| `green`         | `area_sqft` (estimate), `slope` (e.g. "back-to-front") |
+| `pin`           | `pin_position_label` ("center") |
+| `bunker`        | `subtype` (fairway/greenside), `side` (left/right/front), `carry_yardage` (if fairway bunker) |
+| `target_point`  | `yardage_from_tee`, `side` |
+| `layup_point`   | `yardage_from_tee`, `yardage_to_pin` |
+| `hole_corridor` | no extras |
+
+### Color map (include `feature-color` property on every feature)
+| Feature type     | Color     |
+|---|---|
+| fairway          | `#4a7c3f` |
+| green            | `#2d6e2d` |
+| tee_box          | `#8b6914` |
+| bunker           | `#c8b560` |
+| water            | `#1a6b9e` |
+| rough            | `#3a5e2a` |
+| path             | `#888888` |
+| hole_corridor    | `#3a6a3a` |
+| pin              | `#ff3333` |
+| tee_center       | `#c8a055` |
+| target_point     | `#00d4ff` |
+| layup_point      | `#ff8800` |
+| green_front/center/back | `#5aae5a` |
+
+### bbox
+Include a `bbox` array on every feature: `[min_lng, min_lat, max_lng, max_lat]`
+
+### @id
+Generate a UUID4 for every feature. Format: `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`
 
 ## Quality Notes
-- Accuracy goal is 80% — shapes should be recognizable and correctly positioned,
-  not survey-grade
-- Prefer simpler polygons (fewer points) over complex ones
-- If a feature is not clearly visible in the image, generate a plausible shape
-  based on typical dimensions centered on the midpoint
-- Always close polygons (repeat first coordinate at end)
+- Fairway and green polygons should have 12–25 points — capture actual shape, not just bounding boxes
+- Bunkers are the highest-detail features; trace every indent and lobe (15–30 pts)
+- `hole_corridor` can be coarser (8–14 pts); it's just a containing boundary
+- If a feature isn't visible, generate a plausible shape from typical dimensions and set `is_approximate: true`
+- All AI-generated features should have `is_approximate: true` and `source: "ai_trace"`
 
 ## MCP Integration
-If the `push_geojson` MCP tool is available, after generating the FeatureCollection
-automatically call `push_geojson` to send it to the live viewer. Confirm to the user
-how many features were pushed and the viewer URL.
+After generating the FeatureCollection:
+1. Call `push_geojson` to send it to the live viewer
+2. Confirm to the user: number of features pushed, feature types included, and viewer URL

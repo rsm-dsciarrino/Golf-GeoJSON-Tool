@@ -12,6 +12,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 let currentGeoJSON = { type: 'FeatureCollection', features: [] };
+let midpoints = [];
 const sseClients = new Set();
 
 function broadcast() {
@@ -48,6 +49,22 @@ app.post('/geojson', (req, res) => {
 app.delete('/geojson', (req, res) => {
   currentGeoJSON = { type: 'FeatureCollection', features: [] };
   broadcast();
+  res.json({ ok: true });
+});
+
+app.get('/midpoints', (req, res) => {
+  res.json(midpoints);
+});
+
+app.post('/midpoints', (req, res) => {
+  const { name, lat, lng } = req.body;
+  midpoints = midpoints.filter(m => m.name !== name);
+  midpoints.push({ name, lat, lng });
+  res.json({ ok: true, count: midpoints.length });
+});
+
+app.delete('/midpoints', (req, res) => {
+  midpoints = [];
   res.json({ ok: true });
 });
 
