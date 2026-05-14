@@ -1,0 +1,14 @@
+{
+  "name": "Golf GeoJSON Tool",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+  "postCreateCommand": "cd viewer && npm install && cd ../mcp-server && npm install",
+  "forwardPorts": [3000, 3001],
+  "portsAttributes": {
+    "3000": {
+      "label": "Golf Viewer"
+    },
+    "3001": {
+      "label": "MCP Server"
+    }
+  }
+}

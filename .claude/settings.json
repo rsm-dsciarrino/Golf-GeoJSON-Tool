@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "golf-geojson": {
+      "command": "node",
+      "args": ["/Users/devinsciarrino/git/Golf-GeoJSON-Tool/mcp-server/index.js"],
+      "env": {
+        "VIEWER_URL": "http://localhost:3000"
+      }
+    }
+  }
+}
