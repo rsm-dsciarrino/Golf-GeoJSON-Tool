@@ -63,6 +63,11 @@ app.post('/midpoints', (req, res) => {
   res.json({ ok: true, count: midpoints.length });
 });
 
+app.delete('/midpoints/:name', (req, res) => {
+  midpoints = midpoints.filter(m => m.name !== req.params.name);
+  res.json({ ok: true, count: midpoints.length });
+});
+
 app.delete('/midpoints', (req, res) => {
   midpoints = [];
   res.json({ ok: true });

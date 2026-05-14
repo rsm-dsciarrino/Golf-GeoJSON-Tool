@@ -54,6 +54,15 @@ Generate ALL of the following for every hole:
 
 Add `water`, `rough`, or `path` polygons if clearly visible in the image.
 
+## Course-Level Features
+Use `hole_number: "course"` for course-wide features:
+
+| Feature type     | Geometry | Description |
+|---|---|---|
+| `trees`          | Polygon  | Tree canopy/stands across the course |
+| `water_hazard`   | Polygon  | Water hazards outside a single-hole trace |
+| `hazard`         | Polygon  | Regular hazard/native areas across the course |
+
 ## Tracing Process
 For each polygon feature:
 1. Locate it visually in the image
@@ -92,6 +101,10 @@ Return a GeoJSON FeatureCollection. Every feature must include `bbox`.
 }
 ```
 
+For course-wide features such as trees, water hazards, and regular hazards, set
+`hole_number` to `"course"` and use names like `course_trees_1`,
+`course_water_hazard_1`, or `course_hazard_1`.
+
 ### Additional properties by feature type
 | Feature type    | Extra properties |
 |---|---|
@@ -111,7 +124,10 @@ Return a GeoJSON FeatureCollection. Every feature must include `bbox`.
 | green            | `#2d6e2d` |
 | tee_box          | `#8b6914` |
 | bunker           | `#c8b560` |
+| trees            | `#1f5b37` |
 | water            | `#1a6b9e` |
+| water_hazard     | `#1579b8` |
+| hazard           | `#9b6a2e` |
 | rough            | `#3a5e2a` |
 | path             | `#888888` |
 | hole_corridor    | `#3a6a3a` |
