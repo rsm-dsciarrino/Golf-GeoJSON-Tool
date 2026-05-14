@@ -43,7 +43,6 @@ Generate ALL of the following for every hole:
 | `tee_center`     | Point    | Back-center of tee box |
 | `fairway`        | Polygon  | Maintained fairway corridor, 15–25 pts |
 | `green`          | Polygon  | Putting surface outline, 12–20 pts |
-| `pin`            | Point    | Default pin at green center |
 | `green_front`    | Point    | Forward edge of green (closest to fairway) |
 | `green_center`   | Point    | Center of putting surface |
 | `green_back`     | Point    | Back edge of green |
@@ -76,12 +75,11 @@ For each polygon feature:
 4. Offset each polygon vertex from its provided midpoint coordinate
 5. Always close polygons (first coordinate == last coordinate)
 
-For Point features (tee_center, pin, green markers, target_point, layup_point):
+For Point features (tee_center, green markers, target_point, layup_point):
 - Derive from visual position or compute from polygon bounds
 - `green_front` = southernmost green polygon point
 - `green_back`  = northernmost green polygon point
 - `green_center` = centroid of green polygon
-- `pin` = same as green_center by default
 
 ## Output Format
 Return a GeoJSON FeatureCollection. Every feature must include `bbox`.
@@ -111,7 +109,6 @@ For course-wide features such as trees, water hazards, and regular hazards, set
 | `tee_box`       | `tee` (color: blue/white/red/gold), `par`, `handicap_index`, `yardage` |
 | `tee_center`    | `tee` |
 | `green`         | `area_sqft` (estimate), `slope` (e.g. "back-to-front") |
-| `pin`           | `pin_position_label` ("center") |
 | `bunker`        | `subtype` (fairway/greenside), `side` (left/right/front), `carry_yardage` (if fairway bunker) |
 | `target_point`  | `yardage_from_tee`, `side` |
 | `layup_point`   | `yardage_from_tee`, `yardage_to_pin` |
@@ -131,7 +128,6 @@ For course-wide features such as trees, water hazards, and regular hazards, set
 | rough            | `#3a5e2a` |
 | path             | `#888888` |
 | hole_corridor    | `#3a6a3a` |
-| pin              | `#ff3333` |
 | tee_center       | `#c8a055` |
 | target_point     | `#00d4ff` |
 | layup_point      | `#ff8800` |

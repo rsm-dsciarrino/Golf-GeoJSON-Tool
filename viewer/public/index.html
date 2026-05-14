@@ -222,7 +222,9 @@
         <option value="rough">Rough</option>
         <option value="path">Path</option>
         <option value="hole_corridor">Corridor</option>
-        <option value="pin">Pin</option>
+        <option value="green_front">Green Front</option>
+        <option value="green_center">Green Center</option>
+        <option value="green_back">Green Back</option>
         <option value="tee_center">Tee Center</option>
         <option value="target_point">Target Point</option>
         <option value="layup_point">Layup Point</option>
@@ -287,6 +289,9 @@
         <option value="trees">Trees</option>
         <option value="water_hazard">Water Hazard</option>
         <option value="hazard">Hazard</option>
+        <option value="green_front">Green Front</option>
+        <option value="green_center">Green Center</option>
+        <option value="green_back">Green Back</option>
       </select>
     </div>
     <input type="text" id="midpoint-name-input" autocomplete="off" spellcheck="false" style="width:180px">
@@ -345,7 +350,8 @@
         '#00ff88']];
 
     const pointRadiusExpr = ['match', ['get', 'feature_type'],
-      'target_point', 9, 'layup_point', 9, 'pin', 7, 6];
+      'target_point', 9, 'layup_point', 9, 'pin', 7,
+      'green_front', 7, 'green_center', 7, 'green_back', 7, 6];
 
     // ── Base layer filters (preserved when user filters are applied) ──
     const BASE_FILTERS = {
