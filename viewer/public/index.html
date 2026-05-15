@@ -178,6 +178,36 @@
     }
     .mp-delete-btn:hover { color: #e05555; }
 
+    /* ── Edit popup ── */
+    .popup-edit-input, .popup-edit-select {
+      background: #0a0a0a; border: 1px solid #333; color: #ccc;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      padding: 3px 8px; outline: none; width: 100%;
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    }
+    .popup-edit-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23555'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 7px center;
+      padding-right: 22px; cursor: pointer;
+    }
+    .popup-edit-input:focus, .popup-edit-select:focus { border-color: #555; }
+    .popup-edit-select option { background: #111; color: #aaa; }
+    .popup-edit-label { font-size: 9px; color: #444; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+    .popup-save-btn {
+      flex: 1; background: transparent; border: 1px solid #1a4a1a;
+      color: #5a9a5a; font-family: 'Courier New', Courier, monospace;
+      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 5px 8px; cursor: pointer; transition: background 0.15s;
+    }
+    .popup-save-btn:hover { background: rgba(90,154,90,0.1); color: #7acc7a; }
+
+    /* ── Lasso select ── */
+    .lasso-rect {
+      position: absolute; pointer-events: none; z-index: 5;
+      border: 1.5px dashed #ffcc00; background: rgba(255,204,0,0.08);
+    }
+    #lasso-btn.active { color: #ffcc00; border-color: #ffcc00; background: rgba(255,204,0,0.08); }
+
     /* ── Midpoint markers ── */
     .midpoint-marker { position: relative; width: 10px; height: 10px; pointer-events: none; }
     .marker-pin { width: 10px; height: 10px; background: #00d4ff; border: 2px solid rgba(0,0,0,0.7); border-radius: 50%; }
@@ -242,6 +272,9 @@
       <button class="draw-btn" id="draw-polygon-btn">▭ Polygon</button>
       <button class="draw-btn" id="draw-circle-btn">○ Circle</button>
       <button class="draw-btn" id="draw-point-btn">● Point</button>
+    </div>
+    <div class="draw-row">
+      <button class="draw-btn" id="lasso-btn">⬚ Lasso Select</button>
     </div>
     <div id="draw-status"></div>
   </div>
@@ -367,7 +400,11 @@
     let midpointMode = false;
     let circleDrawMode = false;
     let pendingLngLat = null;
-    const markerMap  = new Map();
+    let activePopup           = null;
+    let lassoMode             = false;
+    let selectedIndices       = new Set();
+    let suppressNextFeatureClick = false;
+    const markerMap           = new Map();
 
     const COURSE_SCOPE = 'course';
     const COURSE_FEATURE_TYPE_VALUES = ['trees', 'water_hazard', 'hazard'];
@@ -426,20 +463,33 @@
         map.setFilter(id, parts.length === 1 ? parts[0] : ['all', ...parts]);
       });
 
-      // Fit bounds to visible features
-      const visible = geojsonData.features.filter(f => {
-        const p = f.properties || {};
-        const matchesHole = hole === 'all'
-          || (hole === COURSE_SCOPE
+      // Only auto-zoom when a specific hole is selected
+      if (hole !== 'all') {
+        const visible = geojsonData.features.filter(f => {
+          const p = f.properties || {};
+          const matchesHole = hole === COURSE_SCOPE
             ? String(p.hole_number) === COURSE_SCOPE || COURSE_FEATURE_TYPES.has(p.feature_type)
-            : String(p.hole_number) === hole);
-        return matchesHole && (type === 'all' || p.feature_type === type);
-      });
-      if (visible.length) fitToBounds({ type: 'FeatureCollection', features: visible });
+            : String(p.hole_number) === hole;
+          return matchesHole && (type === 'all' || p.feature_type === type);
+        });
+        if (visible.length) fitToBounds({ type: 'FeatureCollection', features: visible });
+      }
     }
 
     document.getElementById('hole-select').addEventListener('change', applyFilters);
     document.getElementById('type-select').addEventListener('change', applyFilters);
+
+    // Sync the two hole dropdowns
+    document.getElementById('hole-select').addEventListener('change', function () {
+      if (this.value !== 'all') {
+        document.getElementById('meta-hole-select').value = this.value;
+        syncDrawName();
+      }
+    });
+    document.getElementById('meta-hole-select').addEventListener('change', function () {
+      document.getElementById('hole-select').value = this.value;
+      applyFilters();
+    });
 
     // ── Legend ──
     function updateFeatureLegend(geojson) {
@@ -613,11 +663,163 @@
       map.getSource('golf-features').setData(geojsonData);
       populateFilters();
       updateFeatureLegend(geojsonData);
-      fitToBounds({ type: 'FeatureCollection', features: [newFeature] });
       await saveGeojson();
 
       nameInput.value = autoDrawName(holeValue, featureType);
       resetDrawPanel();
+    }
+
+    // ── Edit popup ──
+    const EDIT_TYPES = [
+      'tee_box','fairway','green','bunker','water','water_hazard','rough',
+      'path','hole_corridor','trees','hazard',
+      'green_front','green_center','green_back','tee_center','target_point','layup_point',
+    ];
+
+    function showEditPopup(featureIdx, lngLat) {
+      if (activePopup) { activePopup.remove(); activePopup = null; }
+      const f = geojsonData.features[featureIdx];
+      if (!f) return;
+      const p = f.properties || {};
+
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;min-width:190px';
+
+      // Name
+      const nameLabel = document.createElement('div');
+      nameLabel.className = 'popup-edit-label';
+      nameLabel.textContent = 'Name';
+      const nameInput = document.createElement('input');
+      nameInput.className = 'popup-edit-input';
+      nameInput.value = p.name || '';
+      nameInput.placeholder = 'feature name';
+      nameInput.spellcheck = false;
+
+      // Type
+      const typeLabel = document.createElement('div');
+      typeLabel.className = 'popup-edit-label';
+      typeLabel.textContent = 'Type';
+      const typeSelect = document.createElement('select');
+      typeSelect.className = 'popup-edit-select';
+      EDIT_TYPES.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t; opt.textContent = t.replace(/_/g, ' ');
+        if (t === p.feature_type) opt.selected = true;
+        typeSelect.appendChild(opt);
+      });
+
+      // Hole
+      const holeLabel = document.createElement('div');
+      holeLabel.className = 'popup-edit-label';
+      holeLabel.textContent = 'Hole';
+      const holeSelect = document.createElement('select');
+      holeSelect.className = 'popup-edit-select';
+      holeSelect.innerHTML = holeSelectOptions(String(p.hole_number));
+
+      // Buttons
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:6px;margin-top:2px';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = 'Save';
+      saveBtn.className = 'popup-save-btn';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'popup-delete-btn';
+      deleteBtn.textContent = '× Delete';
+      deleteBtn.style.flex = '0 0 auto';
+
+      btnRow.appendChild(saveBtn);
+      btnRow.appendChild(deleteBtn);
+
+      wrap.appendChild(nameLabel); wrap.appendChild(nameInput);
+      wrap.appendChild(typeLabel); wrap.appendChild(typeSelect);
+      wrap.appendChild(holeLabel); wrap.appendChild(holeSelect);
+      wrap.appendChild(btnRow);
+
+      saveBtn.addEventListener('click', () => {
+        const newType = typeSelect.value;
+        const newHole = featureHoleValue(holeSelect.value);
+        const newName = nameInput.value.trim() || autoDrawName(holeSelect.value, newType);
+        const props = geojsonData.features[featureIdx].properties;
+        props.name         = newName;
+        props.feature_type = newType;
+        props.hole_number  = newHole;
+        props['feature-color'] = TYPE_COLORS[newType] || '#00ff88';
+        map.getSource('golf-features').setData(geojsonData);
+        populateFilters();
+        updateFeatureLegend(geojsonData);
+        saveGeojson();
+        if (activePopup) { activePopup.remove(); activePopup = null; }
+      });
+
+      deleteBtn.addEventListener('click', () => {
+        geojsonData.features.splice(featureIdx, 1);
+        map.getSource('golf-features').setData(geojsonData);
+        populateFilters();
+        updateFeatureLegend(geojsonData);
+        saveGeojson();
+        if (activePopup) { activePopup.remove(); activePopup = null; }
+      });
+
+      nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveBtn.click(); });
+
+      activePopup = new mapboxgl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '240px' })
+        .setLngLat(lngLat)
+        .setDOMContent(wrap)
+        .addTo(map);
+      activePopup.on('close', () => { activePopup = null; });
+
+      setTimeout(() => nameInput.focus(), 50);
+    }
+
+    // ── Lasso select ──
+    function updateLassoStatus() {
+      const statusEl = document.getElementById('draw-status');
+      if (selectedIndices.size > 0) {
+        statusEl.innerHTML =
+          `<div style="display:flex;gap:6px;align-items:center">
+            <span style="flex:1;font-size:10px;color:#aaa">${selectedIndices.size} selected</span>
+            <button class="draw-btn" id="delete-selected-btn" style="border-color:#552222;color:#ff6666;flex:0 0 auto;padding:4px 8px">Delete</button>
+            <button class="draw-btn" id="clear-sel-btn" style="flex:0 0 auto;padding:4px 8px">Clear</button>
+          </div>`;
+        document.getElementById('delete-selected-btn').addEventListener('click', deleteSelected);
+        document.getElementById('clear-sel-btn').addEventListener('click', clearSelection);
+      } else {
+        statusEl.textContent = lassoMode ? 'drag to select features' : '';
+      }
+    }
+
+    function clearSelection() {
+      selectedIndices.clear();
+      map.getSource('golf-selected').setData({ type: 'FeatureCollection', features: [] });
+      updateLassoStatus();
+    }
+
+    function deleteSelected() {
+      [...selectedIndices].sort((a, b) => b - a).forEach(i => geojsonData.features.splice(i, 1));
+      map.getSource('golf-features').setData(geojsonData);
+      map.getSource('golf-selected').setData({ type: 'FeatureCollection', features: [] });
+      populateFilters();
+      updateFeatureLegend(geojsonData);
+      saveGeojson();
+      selectedIndices.clear();
+      updateLassoStatus();
+    }
+
+    function setLassoMode(active) {
+      lassoMode = active;
+      document.getElementById('lasso-btn').classList.toggle('active', active);
+      if (active) {
+        setMidpointMode(false);
+        circleDrawMode = false;
+        draw.changeMode('simple_select');
+        map.getCanvas().style.cursor = 'crosshair';
+      } else {
+        map.getCanvas().style.cursor = '';
+        clearSelection();
+      }
+      updateLassoStatus();
     }
 
     // ── Save GeoJSON to server ──
@@ -636,6 +838,7 @@
       const pts   = await mRes.json();
 
       map.addSource('golf-features', { type: 'geojson', data: geojsonData });
+      map.addSource('golf-selected', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
       map.addLayer({ id: 'golf-corridor-fill', type: 'fill', source: 'golf-features',
         filter: BASE_FILTERS['golf-corridor-fill'],
@@ -652,6 +855,13 @@
       map.addLayer({ id: 'golf-outline', type: 'line', source: 'golf-features',
         filter: BASE_FILTERS['golf-outline'],
         paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.9 } });
+
+      map.addLayer({ id: 'golf-selected-fill', type: 'fill', source: 'golf-selected',
+        filter: ['==', ['geometry-type'], 'Polygon'],
+        paint: { 'fill-color': '#ffcc00', 'fill-opacity': 0.18 } });
+
+      map.addLayer({ id: 'golf-selected-outline', type: 'line', source: 'golf-selected',
+        paint: { 'line-color': '#ffcc00', 'line-width': 2.5, 'line-opacity': 0.95 } });
 
       map.addLayer({ id: 'golf-circle', type: 'circle', source: 'golf-features',
         filter: BASE_FILTERS['golf-circle'],
@@ -670,8 +880,87 @@
 
       setupDrag();
 
+      // ── Rubber-band lasso ──
+      const mapContainer = map.getContainer();
+      mapContainer.addEventListener('mousedown', (e) => {
+        if (!lassoMode || e.button !== 0) return;
+        const containerRect = mapContainer.getBoundingClientRect();
+        const startX = e.clientX - containerRect.left;
+        const startY = e.clientY - containerRect.top;
+
+        const lassoEl = document.createElement('div');
+        lassoEl.className = 'lasso-rect';
+        lassoEl.style.cssText = `left:${startX}px;top:${startY}px;width:0;height:0`;
+        mapContainer.appendChild(lassoEl);
+        map.dragPan.disable();
+
+        function onMove(ev) {
+          const x = ev.clientX - containerRect.left;
+          const y = ev.clientY - containerRect.top;
+          lassoEl.style.left   = Math.min(x, startX) + 'px';
+          lassoEl.style.top    = Math.min(y, startY) + 'px';
+          lassoEl.style.width  = Math.abs(x - startX) + 'px';
+          lassoEl.style.height = Math.abs(y - startY) + 'px';
+        }
+
+        function onUp(ev) {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          map.dragPan.enable();
+          lassoEl.remove();
+
+          const x = ev.clientX - containerRect.left;
+          const y = ev.clientY - containerRect.top;
+          const x1 = Math.min(x, startX), x2 = Math.max(x, startX);
+          const y1 = Math.min(y, startY), y2 = Math.max(y, startY);
+          if (x2 - x1 < 5 && y2 - y1 < 5) return;
+
+          const sw = map.unproject([x1, y2]);
+          const ne = map.unproject([x2, y1]);
+
+          geojsonData.features.forEach((f, i) => {
+            const coords = f.geometry.type === 'Point'
+              ? [f.geometry.coordinates]
+              : f.geometry.coordinates[0];
+            const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+            const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+            if (cx >= sw.lng && cx <= ne.lng && cy >= sw.lat && cy <= ne.lat) {
+              selectedIndices.add(i);
+            }
+          });
+
+          map.getSource('golf-selected').setData({
+            type: 'FeatureCollection',
+            features: [...selectedIndices].map(i => geojsonData.features[i]),
+          });
+          updateLassoStatus();
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      // Click on polygon or corridor → edit popup
+      ['golf-fill', 'golf-corridor-fill'].forEach(layerId => {
+        map.on('click', layerId, (e) => {
+          if (midpointMode || circleDrawMode || lassoMode || suppressNextFeatureClick || draw.getMode() !== 'simple_select') return;
+          e.preventDefault();
+          const clickedName = e.features[0].properties.name;
+          const idx = geojsonData.features.findIndex(f => f.properties?.name === clickedName);
+          if (idx !== -1) showEditPopup(idx, e.lngLat);
+        });
+        map.on('mouseenter', layerId, () => {
+          if (!midpointMode && draw.getMode() === 'simple_select') map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', layerId, () => {
+          if (!midpointMode) map.getCanvas().style.cursor = '';
+        });
+      });
+
       map.on('draw.create', async (e) => {
         map.doubleClickZoom.enable();
+        suppressNextFeatureClick = true;
+        setTimeout(() => { suppressNextFeatureClick = false; }, 0);
 
         if (!e.features.length) { resetDrawPanel(); return; }
         const geometry = e.features[0].geometry;
@@ -692,10 +981,8 @@
         if (!dragging && !midpointMode) map.getCanvas().style.cursor = '';
       });
 
-      let activePopup = null;
-
       map.on('mousedown', 'golf-circle', (e) => {
-        if (midpointMode) return;
+        if (midpointMode || lassoMode) return;
         e.preventDefault();
         const startPos  = e.point;
         const clickName = e.features[0].properties.name;
@@ -731,38 +1018,9 @@
             return;
           }
 
-          // No drag → show delete popup
-          if (activePopup) { activePopup.remove(); activePopup = null; }
-
-          const content = document.createElement('div');
-          const label   = document.createElement('span');
-          label.className   = 'popup-name';
-          label.textContent = clickName;
-
-          const btn = document.createElement('button');
-          btn.className   = 'popup-delete-btn';
-          btn.textContent = '× Delete';
-          btn.addEventListener('click', () => {
-            const idx = geojsonData.features.findIndex(f => f.properties?.name === clickName);
-            if (idx !== -1) {
-              geojsonData.features.splice(idx, 1);
-              map.getSource('golf-features').setData(geojsonData);
-              populateFilters();
-              updateFeatureLegend(geojsonData);
-              saveGeojson();
-            }
-            if (activePopup) { activePopup.remove(); activePopup = null; }
-          });
-
-          content.appendChild(label);
-          content.appendChild(btn);
-
-          activePopup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '220px' })
-            .setLngLat(clickCoords)
-            .setDOMContent(content)
-            .addTo(map);
-
-          activePopup.on('close', () => { activePopup = null; });
+          // No drag → show edit popup
+          const idx = geojsonData.features.findIndex(f => f.properties?.name === clickName);
+          if (idx !== -1) showEditPopup(idx, clickCoords);
         }
 
         map.on('mousemove', onMove);
@@ -885,8 +1143,16 @@
     });
 
     // ── Draw toolbar ──
-    document.getElementById('draw-type-select').addEventListener('change', syncDrawName);
-    metaHoleSelect.addEventListener('change', syncDrawName);
+    const AUTO_POINT_TYPES = new Set(['tee_center', 'green_front', 'green_center', 'green_back', 'target_point', 'layup_point']);
+
+    document.getElementById('draw-type-select').addEventListener('change', function () {
+      syncDrawName();
+      if (AUTO_POINT_TYPES.has(this.value)) {
+        circleDrawMode = false;
+        draw.changeMode('draw_point');
+        document.getElementById('draw-status').textContent = 'click to place point';
+      }
+    });
 
     function finishPolygon() {
       if (draw.getMode() === 'draw_polygon') {
@@ -941,11 +1207,14 @@
       await addDrawnFeature(geometry);
     });
 
-    // Enter closes polygon; Escape cancels
+    document.getElementById('lasso-btn').addEventListener('click', () => setLassoMode(!lassoMode));
+
+    // Enter closes polygon; Escape cancels draw or lasso
     document.addEventListener('keydown', e => {
       if (e.key === 'Enter' && draw.getMode() === 'draw_polygon') {
         finishPolygon();
       } else if (e.key === 'Escape') {
+        if (lassoMode) { setLassoMode(false); return; }
         map.doubleClickZoom.enable();
         draw.changeMode('simple_select');
         draw.deleteAll();
