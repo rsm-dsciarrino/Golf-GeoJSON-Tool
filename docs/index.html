@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="mapbox-token" content="">
   <title>Golf GeoJSON Viewer</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
@@ -321,14 +320,11 @@
   </div>
 
   <script>
-    const DEFAULT_MAPBOX_TOKEN = '';
     const TOKEN_STORAGE_KEY = 'golfGeojson.mapboxToken';
     const GEOJSON_STORAGE_KEY = 'golfGeojson.geojson';
     const MIDPOINTS_STORAGE_KEY = 'golfGeojson.midpoints';
 
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY)
-      || DEFAULT_MAPBOX_TOKEN
-      || document.querySelector('meta[name="mapbox-token"]').content;
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
     const tokenPanel = document.getElementById('token-panel');
     if (!token) tokenPanel.style.display = 'flex';
     document.getElementById('token-save-btn').addEventListener('click', () => {

@@ -72,20 +72,7 @@ The Pages version is browser-only:
 
 ### Mapbox Token For Pages
 
-Create a separate public Mapbox token for GitHub Pages and restrict it to:
-
-```text
-https://rsm-dsciarrino.github.io/*
-https://rsm-dsciarrino.github.io/Golf-GeoJSON-Tool/*
-```
-
-Then put that token in `docs/index.html`:
-
-```js
-const DEFAULT_MAPBOX_TOKEN = 'pk.your_restricted_public_token';
-```
-
-If `DEFAULT_MAPBOX_TOKEN` is empty, the Pages app shows a token prompt and stores the entered token in `localStorage`.
+The Pages viewer does not ship with a Mapbox token. Each user must paste their own public Mapbox token when the page opens. The token is saved only in that browser's `localStorage`.
 
 ### Local
 
