@@ -16,6 +16,7 @@ A live Mapbox satellite viewer for drawing, reviewing, exporting, and receiving 
 - Filter by scope and feature type.
 - Place named midpoint anchors for AI tracing and delete individual midpoints or map features.
 - Export the current FeatureCollection as a `.geojson` file.
+- Import GeoJSON files in the static GitHub Pages viewer.
 
 ## Feature Types
 
@@ -51,6 +52,40 @@ Course-level features use `properties.hole_number: "course"`.
 ### Prerequisites
 - Node.js 18+
 - A Mapbox access token ([mapbox.com](https://mapbox.com))
+
+## GitHub Pages
+
+The static GitHub Pages viewer lives in `docs/index.html` and deploys from `.github/workflows/pages.yml`.
+
+Expected URL:
+
+```text
+https://rsm-dsciarrino.github.io/Golf-GeoJSON-Tool/
+```
+
+The Pages version is browser-only:
+
+- GeoJSON and midpoints are stored in `localStorage`.
+- Import/export works through local files.
+- MCP push/update tools require the local Express server, not GitHub Pages.
+- SSE live updates are disabled in static mode.
+
+### Mapbox Token For Pages
+
+Create a separate public Mapbox token for GitHub Pages and restrict it to:
+
+```text
+https://rsm-dsciarrino.github.io/*
+https://rsm-dsciarrino.github.io/Golf-GeoJSON-Tool/*
+```
+
+Then put that token in `docs/index.html`:
+
+```js
+const DEFAULT_MAPBOX_TOKEN = 'pk.your_restricted_public_token';
+```
+
+If `DEFAULT_MAPBOX_TOKEN` is empty, the Pages app shows a token prompt and stores the entered token in `localStorage`.
 
 ### Local
 
@@ -95,6 +130,9 @@ golf-geojson-tool/
 │   ├── server.js                     # Express server for GeoJSON, midpoints, static map, and SSE
 │   ├── public/index.html             # Mapbox viewer and drawing UI
 │   └── package.json
+├── docs/
+│   └── index.html                    # Static GitHub Pages viewer
+├── .github/workflows/pages.yml       # GitHub Pages deployment workflow
 ├── mcp-server/
 │   ├── index.js                      # MCP server with push/update/get/clear tools
 │   └── package.json

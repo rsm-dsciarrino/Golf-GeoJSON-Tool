@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mapbox-token" content="">
+  <title>Golf GeoJSON Viewer</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', Courier, monospace; background: #000; }
+    #map { position: fixed; inset: 0; }
+    #map.midpoint-active { cursor: crosshair; }
+
+    .panel {
+      position: absolute;
+      background: rgba(8, 8, 8, 0.9);
+      border: 1px solid #252525;
+      color: #bbb;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      z-index: 10;
+    }
+
+    /* ── Metadata bar ── */
+    #metadata-bar {
+      top: 0; left: 0; right: 0;
+      display: flex; align-items: center; gap: 20px;
+      padding: 7px 14px; border-left: none; border-right: none; border-top: none;
+      border-bottom: 1px solid #1e1e1e; z-index: 20;
+    }
+    .meta-cell { display: flex; align-items: center; gap: 6px; }
+    .meta-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap; }
+    .meta-input {
+      background: #0a0a0a; border: 1px solid #252525; color: #bbb;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      padding: 3px 8px; outline: none; width: 155px;
+    }
+    .meta-input:focus { border-color: #444; }
+
+    /* ── Draw panel ── */
+    #draw-panel {
+      top: 108px; left: 10px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 220px;
+    }
+    .draw-row { display: flex; align-items: center; gap: 6px; }
+    #draw-name-input {
+      background: #0a0a0a; border: 1px solid #333; color: #ccc;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      padding: 3px 8px; outline: none; width: 100%;
+    }
+    #draw-name-input:focus { border-color: #555; }
+    #draw-radius-input {
+      background: #0a0a0a; border: 1px solid #333; color: #ccc;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      padding: 3px 8px; outline: none; width: 70px;
+    }
+    #draw-radius-input:focus { border-color: #555; }
+    .draw-btn {
+      flex: 1; padding: 6px 6px; cursor: pointer; background: transparent;
+      border: 1px solid #252525; color: #888;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .draw-btn:hover { color: #ccc; border-color: #444; }
+    #commit-btn { border-color: #1a4a1a; color: #5a9a5a; }
+    #commit-btn:hover { color: #7acc7a; border-color: #2a6a2a; background: rgba(90,154,90,0.08); }
+    #discard-btn { border-color: #3a1a1a; color: #7a4a4a; }
+    #discard-btn:hover { color: #cc7a7a; border-color: #5a2222; }
+    #draw-status { font-size: 10px; color: #444; letter-spacing: 0.04em; text-align: center; min-height: 14px; }
+
+    /* ── Filters ── */
+    #filters {
+      top: 54px; left: 10px;
+      display: flex; align-items: center; gap: 14px;
+      padding: 8px 14px;
+    }
+    .filter-group { display: flex; align-items: center; gap: 6px; }
+    .filter-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; }
+    select.filter-select {
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      background-color: #0a0a0a;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23555'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 7px center;
+      border: 1px solid #2e2e2e; color: #aaa;
+      font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      padding: 4px 26px 4px 8px; cursor: pointer; outline: none; min-width: 110px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    select.filter-select:hover { border-color: #444; color: #ccc; }
+    select.filter-select option { background: #111; color: #aaa; }
+
+    /* ── Legend ── */
+    #legend {
+      top: 54px; right: 10px;
+      min-width: 200px; max-width: 270px; max-height: 75vh; overflow-y: auto;
+    }
+    .legend-section-header {
+      padding: 6px 12px 4px; font-size: 10px; letter-spacing: 0.12em;
+      color: #444; text-transform: uppercase; border-bottom: 1px solid #1c1c1c;
+    }
+    .legend-section-header:not(:first-child) { border-top: 1px solid #1c1c1c; }
+    #legend-features, #legend-midpoints { padding: 4px 0; }
+    .legend-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 12px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; opacity: 0.9; margin-top: 3px; }
+    .legend-name   { color: #999; font-size: 11px; }
+    .legend-sub    { color: #444; font-size: 9px; }
+    .legend-coords { color: #444; font-size: 9px; white-space: nowrap; }
+    .legend-empty  { padding: 6px 12px; color: #333; font-size: 11px; }
+
+    /* ── Buttons ── */
+    .ctrl-btn {
+      padding: 7px 14px; cursor: pointer; letter-spacing: 0.08em;
+      text-transform: uppercase; font-size: 11px;
+      font-family: 'Courier New', Courier, monospace;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    #clear-midpoints-btn { bottom: 116px; right: 10px; color: #555; border: 1px solid #1e1e1e; font-size: 10px; padding: 5px 10px; }
+    #clear-midpoints-btn:hover { color: #888; border-color: #333; }
+    #midpoint-btn { bottom: 80px; right: 10px; color: #888; border: 1px solid #252525; }
+    #midpoint-btn:hover { color: #00d4ff; border-color: #003a4a; }
+    #midpoint-btn.active { color: #00d4ff; border-color: #00d4ff; background: rgba(0,212,255,0.08); }
+    #clear-btn { bottom: 36px; right: 10px; color: #888; border: 1px solid #252525; }
+    #clear-btn:hover { color: #ff4444; border-color: #552222; }
+    #download-btn { bottom: 36px; left: 10px; color: #888; border: 1px solid #252525; }
+    #download-btn:hover { color: #aaffaa; border-color: #2a5a2a; }
+    #import-btn { bottom: 80px; left: 10px; color: #888; border: 1px solid #252525; }
+    #import-btn:hover { color: #00d4ff; border-color: #003a4a; }
+    #token-panel {
+      bottom: 10px; left: 50%; transform: translateX(-50%);
+      display: none; align-items: center; gap: 8px; padding: 9px 12px; z-index: 30;
+    }
+    #token-input {
+      background: #0a0a0a; border: 1px solid #333; color: #ccc;
+      font-family: 'Courier New', Courier, monospace; font-size: 12px;
+      padding: 4px 8px; width: 320px; outline: none;
+    }
+    #token-input:focus { border-color: #00d4ff; }
+
+    #status { bottom: 10px; left: 10px; padding: 5px 10px; font-size: 10px; color: #333; letter-spacing: 0.06em; pointer-events: none; }
+
+    /* ── Feature popup ── */
+    .mapboxgl-popup-content {
+      background: rgba(8, 8, 8, 0.96); border: 1px solid #333;
+      color: #bbb; font-family: 'Courier New', Courier, monospace;
+      padding: 10px 12px; border-radius: 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+    }
+    .mapboxgl-popup-close-button { color: #555; font-size: 14px; padding: 3px 7px; background: none; }
+    .mapboxgl-popup-close-button:hover { color: #aaa; background: none; }
+    .mapboxgl-popup-tip { border-top-color: #333 !important; border-bottom-color: #333 !important; }
+    .popup-name { font-size: 11px; color: #888; display: block; margin-bottom: 8px; white-space: nowrap; }
+    .popup-delete-btn {
+      width: 100%; background: transparent; border: 1px solid #552222;
+      color: #ff4444; font-family: 'Courier New', Courier, monospace;
+      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 5px 8px; cursor: pointer; transition: background 0.15s;
+    }
+    .popup-delete-btn:hover { background: rgba(255,68,68,0.1); }
+
+    /* ── Name input panel ── */
+    #name-panel {
+      bottom: 80px; left: 50%; transform: translateX(-50%);
+      display: none; align-items: center; gap: 8px; padding: 9px 12px; white-space: nowrap;
+    }
+    #name-panel label { font-size: 10px; color: #555; letter-spacing: 0.08em; text-transform: uppercase; }
+    #midpoint-name-input {
+      background: #0a0a0a; border: 1px solid #333; color: #ccc;
+      font-family: 'Courier New', Courier, monospace; font-size: 12px;
+      padding: 4px 8px; width: 200px; outline: none;
+    }
+    #midpoint-name-input:focus { border-color: #00d4ff; }
+    .name-btn {
+      padding: 4px 10px; font-family: 'Courier New', Courier, monospace; font-size: 11px;
+      cursor: pointer; border: 1px solid #333; background: transparent; color: #888;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    #name-save-btn { color: #00d4ff; border-color: #003a4a; }
+    #name-save-btn:hover { background: rgba(0,212,255,0.1); }
+    #name-cancel-btn:hover { color: #ccc; }
+
+    /* ── Midpoint delete button ── */
+    .mp-delete-btn {
+      background: none; border: none; color: #555; font-size: 14px;
+      cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
+    }
+    .mp-delete-btn:hover { color: #e05555; }
+
+    /* ── Midpoint markers ── */
+    .midpoint-marker { position: relative; width: 10px; height: 10px; pointer-events: none; }
+    .marker-pin { width: 10px; height: 10px; background: #00d4ff; border: 2px solid rgba(0,0,0,0.7); border-radius: 50%; }
+    .marker-label {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      background: rgba(8,8,8,0.88); color: #00d4ff;
+      font-size: 10px; font-family: 'Courier New', Courier, monospace;
+      padding: 2px 6px; white-space: nowrap; border: 1px solid #0a2a2a;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div class="panel" id="metadata-bar">
+    <div class="meta-cell">
+      <span class="meta-label">Course</span>
+      <input class="meta-input" type="text" id="meta-course-name" placeholder="Course name" autocomplete="off">
+    </div>
+    <div class="meta-cell">
+      <span class="meta-label">ID</span>
+      <input class="meta-input" type="text" id="meta-course-id" placeholder="course_id" autocomplete="off">
+    </div>
+    <div class="meta-cell">
+      <span class="meta-label">Hole</span>
+      <select class="filter-select" id="meta-hole-select" style="min-width:80px"></select>
+    </div>
+  </div>
+
+  <div class="panel" id="draw-panel">
+    <div class="draw-row">
+      <span class="filter-label">Type</span>
+      <select class="filter-select" id="draw-type-select" style="min-width:130px">
+        <option value="tee_box">Tee Box</option>
+        <option value="fairway">Fairway</option>
+        <option value="green">Green</option>
+        <option value="bunker">Bunker</option>
+        <option value="trees">Trees</option>
+        <option value="water">Water</option>
+        <option value="water_hazard">Water Hazard</option>
+        <option value="hazard">Hazard</option>
+        <option value="rough">Rough</option>
+        <option value="path">Path</option>
+        <option value="hole_corridor">Corridor</option>
+        <option value="green_front">Green Front</option>
+        <option value="green_center">Green Center</option>
+        <option value="green_back">Green Back</option>
+        <option value="tee_center">Tee Center</option>
+        <option value="target_point">Target Point</option>
+        <option value="layup_point">Layup Point</option>
+      </select>
+    </div>
+    <div class="draw-row">
+      <input type="text" id="draw-name-input" placeholder="feature name" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="draw-row">
+      <span class="filter-label">Radius</span>
+      <input type="number" id="draw-radius-input" min="1" step="1" value="20">
+      <span class="filter-label">m</span>
+    </div>
+    <div class="draw-row">
+      <button class="draw-btn" id="draw-polygon-btn">▭ Polygon</button>
+      <button class="draw-btn" id="draw-circle-btn">○ Circle</button>
+      <button class="draw-btn" id="draw-point-btn">● Point</button>
+    </div>
+    <div id="draw-status"></div>
+  </div>
+
+  <div class="panel" id="filters">
+    <div class="filter-group">
+      <span class="filter-label">Hole</span>
+      <select class="filter-select" id="hole-select">
+        <option value="all">All Holes</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <select class="filter-select" id="type-select">
+        <option value="all">All Types</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel" id="legend">
+    <div class="legend-section-header">Features</div>
+    <div id="legend-features"><div class="legend-empty">no features loaded</div></div>
+    <div class="legend-section-header">Midpoints</div>
+    <div id="legend-midpoints"><div class="legend-empty">no midpoints placed</div></div>
+  </div>
+
+  <button class="panel ctrl-btn" id="download-btn">Export GeoJSON</button>
+  <button class="panel ctrl-btn" id="import-btn">Import GeoJSON</button>
+  <input type="file" id="import-file-input" accept=".geojson,application/geo+json,application/json" hidden>
+
+  <button class="panel ctrl-btn" id="clear-midpoints-btn">Clear Midpoints</button>
+  <button class="panel ctrl-btn" id="midpoint-btn">+ Midpoint</button>
+  <button class="panel ctrl-btn" id="clear-btn">Clear Map</button>
+
+  <div class="panel" id="name-panel">
+    <div class="filter-group">
+      <span class="filter-label">Hole</span>
+      <select class="filter-select" id="mp-hole-select" style="min-width:60px"></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <select class="filter-select" id="mp-type-select" style="min-width:100px">
+        <option value="tee_box">Tee Box</option>
+        <option value="fairway">Fairway</option>
+        <option value="green">Green</option>
+        <option value="bunker">Bunker</option>
+        <option value="trees">Trees</option>
+        <option value="water_hazard">Water Hazard</option>
+        <option value="hazard">Hazard</option>
+        <option value="green_front">Green Front</option>
+        <option value="green_center">Green Center</option>
+        <option value="green_back">Green Back</option>
+      </select>
+    </div>
+    <input type="text" id="midpoint-name-input" autocomplete="off" spellcheck="false" style="width:180px">
+    <button class="name-btn" id="name-save-btn">Save</button>
+    <button class="name-btn" id="name-cancel-btn">Cancel</button>
+  </div>
+
+  <div class="panel" id="status">LIVE</div>
+  <div class="panel" id="token-panel">
+    <span class="filter-label">Mapbox Token</span>
+    <input type="text" id="token-input" autocomplete="off" spellcheck="false" placeholder="pk...">
+    <button class="name-btn" id="token-save-btn">Save</button>
+  </div>
+
+  <script>
+    const DEFAULT_MAPBOX_TOKEN = '';
+    const TOKEN_STORAGE_KEY = 'golfGeojson.mapboxToken';
+    const GEOJSON_STORAGE_KEY = 'golfGeojson.geojson';
+    const MIDPOINTS_STORAGE_KEY = 'golfGeojson.midpoints';
+
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY)
+      || DEFAULT_MAPBOX_TOKEN
+      || document.querySelector('meta[name="mapbox-token"]').content;
+    const tokenPanel = document.getElementById('token-panel');
+    if (!token) tokenPanel.style.display = 'flex';
+    document.getElementById('token-save-btn').addEventListener('click', () => {
+      const nextToken = document.getElementById('token-input').value.trim();
+      if (!nextToken) return;
+      localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
+      window.location.reload();
+    });
+
+    function readJsonState(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    mapboxgl.accessToken = token;
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      center: [0, 20],
+      zoom: 2,
+    });
+
+    const draw = new MapboxDraw({
+      displayControlsDefault: false,
+      defaultMode: 'simple_select',
+    });
+    map.addControl(draw);
+
+    // ── Color mapping ──
+    const TYPE_COLORS = {
+      fairway: '#4a7c3f', green: '#2d6e2d', tee_box: '#8b6914',
+      bunker: '#c8b560', trees: '#1f5b37', water: '#1a6b9e',
+      water_hazard: '#1579b8', hazard: '#9b6a2e', rough: '#3a5e2a',
+      path: '#888888', hole_corridor: '#3a6a3a',
+      pin: '#ff3333', tee_center: '#c8a055',
+      target_point: '#00d4ff', layup_point: '#ff8800',
+      green_front: '#5aae5a', green_center: '#5aae5a', green_back: '#5aae5a',
+    };
+
+    function featureColor(f) {
+      const p = f.properties || {};
+      return p['feature-color'] || TYPE_COLORS[p.feature_type] || '#00ff88';
+    }
+
+    const colorExpr = ['coalesce', ['get', 'feature-color'],
+      ['match', ['get', 'feature_type'],
+        'fairway', '#4a7c3f', 'green', '#2d6e2d', 'tee_box', '#8b6914',
+        'bunker', '#c8b560', 'trees', '#1f5b37', 'water', '#1a6b9e',
+        'water_hazard', '#1579b8', 'hazard', '#9b6a2e', 'rough', '#3a5e2a',
+        'path', '#888888', 'hole_corridor', '#3a6a3a', '#00ff88']];
+
+    const pointColorExpr = ['coalesce', ['get', 'feature-color'],
+      ['match', ['get', 'feature_type'],
+        'pin', '#ff3333', 'tee_center', '#c8a055',
+        'target_point', '#00d4ff', 'layup_point', '#ff8800',
+        'trees', '#1f5b37', 'water_hazard', '#1579b8', 'hazard', '#9b6a2e',
+        'green_front', '#5aae5a', 'green_center', '#5aae5a', 'green_back', '#5aae5a',
+        '#00ff88']];
+
+    const pointRadiusExpr = ['match', ['get', 'feature_type'],
+      'target_point', 9, 'layup_point', 9, 'pin', 7,
+      'green_front', 7, 'green_center', 7, 'green_back', 7, 6];
+
+    // ── Base layer filters (preserved when user filters are applied) ──
+    const BASE_FILTERS = {
+      'golf-corridor-fill': ['==', ['get', 'feature_type'], 'hole_corridor'],
+      'golf-corridor-line': ['==', ['get', 'feature_type'], 'hole_corridor'],
+      'golf-fill':    ['all', ['==', ['geometry-type'], 'Polygon'], ['!=', ['get', 'feature_type'], 'hole_corridor']],
+      'golf-outline': ['all', ['==', ['geometry-type'], 'Polygon'], ['!=', ['get', 'feature_type'], 'hole_corridor']],
+      'golf-circle':  ['==', ['geometry-type'], 'Point'],
+    };
+
+    // ── State ──
+    let geojsonData  = { type: 'FeatureCollection', features: [] };
+    let midpoints = [];
+    let midpointMode = false;
+    let circleDrawMode = false;
+    let pendingLngLat = null;
+    const markerMap  = new Map();
+
+    const COURSE_SCOPE = 'course';
+    const COURSE_FEATURE_TYPE_VALUES = ['trees', 'water_hazard', 'hazard'];
+    const COURSE_FEATURE_TYPES = new Set(COURSE_FEATURE_TYPE_VALUES);
+
+    function holeOptionHtml(value, selectedValue = null) {
+      const selected = String(value) === String(selectedValue) ? ' selected' : '';
+      const label = String(value) === COURSE_SCOPE ? 'Course' : `Hole ${value}`;
+      return `<option value="${value}"${selected}>${label}</option>`;
+    }
+
+    function holeSelectOptions(selectedValue = null, includeAll = false) {
+      const allOption = includeAll ? `<option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Holes</option>` : '';
+      const courseOption = holeOptionHtml(COURSE_SCOPE, selectedValue);
+      const holeOptions = Array.from({ length: 18 }, (_, i) => holeOptionHtml(i + 1, selectedValue)).join('');
+      return allOption + courseOption + holeOptions;
+    }
+
+    function featureScopeName(holeValue) {
+      return String(holeValue) === COURSE_SCOPE ? COURSE_SCOPE : `hole_${holeValue}`;
+    }
+
+    function featureHoleValue(holeValue) {
+      return String(holeValue) === COURSE_SCOPE ? COURSE_SCOPE : parseInt(holeValue, 10);
+    }
+
+    // ── Filters ──
+    function populateFilters() {
+      const features = geojsonData.features;
+      const types = [...new Set(features.map(f => f.properties?.feature_type).filter(Boolean))].sort();
+
+      const holeEl = document.getElementById('hole-select');
+      const typeEl = document.getElementById('type-select');
+      const prevHole = holeEl.value;
+      const prevType = typeEl.value;
+
+      holeEl.innerHTML = holeSelectOptions(prevHole || 'all', true);
+
+      typeEl.innerHTML = '<option value="all">All Types</option>' +
+        types.map(t => `<option value="${t}"${t === prevType ? ' selected' : ''}>${t.replace(/_/g, ' ')}</option>`).join('');
+    }
+
+    function applyFilters() {
+      const hole = document.getElementById('hole-select').value;
+      const type = document.getElementById('type-select').value;
+
+      const holeValueFilter = ['==', ['to-string', ['get', 'hole_number']], hole];
+      const courseFeatureTypeFilter = ['in', ['get', 'feature_type'], ['literal', COURSE_FEATURE_TYPE_VALUES]];
+      const holeFilter = hole !== 'all'
+        ? (hole === COURSE_SCOPE ? ['any', holeValueFilter, courseFeatureTypeFilter] : holeValueFilter)
+        : null;
+      const typeFilter = type !== 'all' ? ['==', ['get', 'feature_type'], type]          : null;
+
+      Object.entries(BASE_FILTERS).forEach(([id, base]) => {
+        const parts = [base, holeFilter, typeFilter].filter(Boolean);
+        map.setFilter(id, parts.length === 1 ? parts[0] : ['all', ...parts]);
+      });
+
+      // Fit bounds to visible features
+      const visible = geojsonData.features.filter(f => {
+        const p = f.properties || {};
+        const matchesHole = hole === 'all'
+          || (hole === COURSE_SCOPE
+            ? String(p.hole_number) === COURSE_SCOPE || COURSE_FEATURE_TYPES.has(p.feature_type)
+            : String(p.hole_number) === hole);
+        return matchesHole && (type === 'all' || p.feature_type === type);
+      });
+      if (visible.length) fitToBounds({ type: 'FeatureCollection', features: visible });
+    }
+
+    document.getElementById('hole-select').addEventListener('change', applyFilters);
+    document.getElementById('type-select').addEventListener('change', applyFilters);
+
+    // ── Legend ──
+    function updateFeatureLegend(geojson) {
+      const list = document.getElementById('legend-features');
+      const features = geojson.features || [];
+      if (!features.length) { list.innerHTML = '<div class="legend-empty">no features loaded</div>'; return; }
+      list.innerHTML = features.map((f, i) => {
+        const p = f.properties || {};
+        const name  = p.name || p.feature_type || 'unnamed';
+        const sub   = p.feature_type || '';
+        const color = featureColor(f);
+        return `<div class="legend-item" style="justify-content:space-between">
+          <div style="display:flex;align-items:flex-start;gap:8px;min-width:0">
+            <span class="legend-dot" style="background:${color};flex-shrink:0;margin-top:3px"></span>
+            <div style="min-width:0">
+              <div class="legend-name">${name}</div>
+              ${sub ? `<div class="legend-sub">${sub.replace(/_/g, ' ')}</div>` : ''}
+            </div>
+          </div>
+          <button class="mp-delete-btn" data-idx="${i}" title="Delete">×</button>
+        </div>`;
+      }).join('');
+      list.querySelectorAll('.mp-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          geojsonData.features.splice(parseInt(btn.dataset.idx), 1);
+          map.getSource('golf-features').setData(geojsonData);
+          populateFilters();
+          updateFeatureLegend(geojsonData);
+          saveGeojson();
+        });
+      });
+    }
+
+    function saveMidpoints() {
+      localStorage.setItem(MIDPOINTS_STORAGE_KEY, JSON.stringify(midpoints));
+    }
+
+    async function deleteMidpoint(name) {
+      midpoints = midpoints.filter(m => m.name !== name);
+      saveMidpoints();
+      if (markerMap.has(name)) { markerMap.get(name).remove(); markerMap.delete(name); }
+      updateMidpointLegend(midpoints);
+    }
+
+    function updateMidpointLegend(pts) {
+      const list = document.getElementById('legend-midpoints');
+      if (!pts.length) { list.innerHTML = '<div class="legend-empty">no midpoints placed</div>'; return; }
+      list.innerHTML = pts.map(p => `
+        <div class="legend-item" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px;min-width:0">
+            <span class="legend-dot" style="background:#00d4ff;flex-shrink:0"></span>
+            <div style="min-width:0">
+              <div class="legend-name">${p.name}</div>
+              <div class="legend-coords">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>
+            </div>
+          </div>
+          <button class="mp-delete-btn" data-name="${p.name}" title="Delete">×</button>
+        </div>`).join('');
+      list.querySelectorAll('.mp-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteMidpoint(btn.dataset.name));
+      });
+    }
+
+    // ── Fit bounds ──
+    function fitToBounds(geojson) {
+      const features = geojson.features || [];
+      if (!features.length) return;
+      const bounds = new mapboxgl.LngLatBounds();
+      function ext(c) { typeof c[0] === 'number' ? bounds.extend(c) : c.forEach(ext); }
+      features.forEach(f => { if (f.geometry?.coordinates) ext(f.geometry.coordinates); });
+      if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 60, maxZoom: 18, duration: 800 });
+    }
+
+    // ── Midpoint markers ──
+    function addMarker(name, lat, lng) {
+      if (markerMap.has(name)) markerMap.get(name).remove();
+      const el = document.createElement('div');
+      el.className = 'midpoint-marker';
+      el.innerHTML = `<div class="marker-pin"></div><div class="marker-label">${name}</div>`;
+      const m = new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map);
+      markerMap.set(name, m);
+    }
+    function clearMarkers() { markerMap.forEach(m => m.remove()); markerMap.clear(); }
+
+    // ── Draw helpers ──
+    function uuidv4() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+
+    function computeBbox(geometry) {
+      let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+      function walk(c) {
+        if (typeof c[0] === 'number') {
+          if (c[0] < minLng) minLng = c[0]; if (c[0] > maxLng) maxLng = c[0];
+          if (c[1] < minLat) minLat = c[1]; if (c[1] > maxLat) maxLat = c[1];
+        } else c.forEach(walk);
+      }
+      walk(geometry.coordinates);
+      return [minLng, minLat, maxLng, maxLat];
+    }
+
+    function circleGeometry(center, radiusMeters, steps = 64) {
+      const earthRadius = 6371008.8;
+      const lat = center.lat * Math.PI / 180;
+      const lng = center.lng * Math.PI / 180;
+      const angularDistance = radiusMeters / earthRadius;
+      const coords = [];
+
+      for (let i = 0; i <= steps; i++) {
+        const bearing = 2 * Math.PI * i / steps;
+        const pointLat = Math.asin(
+          Math.sin(lat) * Math.cos(angularDistance) +
+          Math.cos(lat) * Math.sin(angularDistance) * Math.cos(bearing)
+        );
+        const pointLng = lng + Math.atan2(
+          Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat),
+          Math.cos(angularDistance) - Math.sin(lat) * Math.sin(pointLat)
+        );
+        coords.push([pointLng * 180 / Math.PI, pointLat * 180 / Math.PI]);
+      }
+
+      return { type: 'Polygon', coordinates: [coords] };
+    }
+
+    function autoDrawName(holeValue, type) {
+      const base  = `${featureScopeName(holeValue)}_${type}`;
+      const names = geojsonData.features.map(f => f.properties?.name);
+      if (!names.includes(base)) return base;
+      let n = 2;
+      while (names.includes(`${base}_${n}`)) n++;
+      return `${base}_${n}`;
+    }
+
+    function syncDrawName() {
+      const holeEl = document.getElementById('meta-hole-select');
+      const type = document.getElementById('draw-type-select').value;
+      if (COURSE_FEATURE_TYPES.has(type)) holeEl.value = COURSE_SCOPE;
+      document.getElementById('draw-name-input').value = autoDrawName(holeEl.value, type);
+    }
+
+    function resetDrawPanel() {
+      circleDrawMode = false;
+      map.getCanvas().style.cursor = midpointMode ? 'crosshair' : '';
+      document.getElementById('draw-status').textContent = '';
+    }
+
+    async function addDrawnFeature(geometry) {
+      const courseName  = document.getElementById('meta-course-name').value.trim();
+      const courseId    = document.getElementById('meta-course-id').value.trim();
+      const holeValue   = document.getElementById('meta-hole-select').value;
+      const featureType = document.getElementById('draw-type-select').value;
+      const nameInput   = document.getElementById('draw-name-input');
+      const name        = nameInput.value.trim() || autoDrawName(holeValue, featureType);
+
+      const newFeature = {
+        type: 'Feature',
+        bbox: computeBbox(geometry),
+        geometry,
+        properties: {
+          course_id:       courseId,
+          course_name:     courseName,
+          hole_number:     featureHoleValue(holeValue),
+          feature_type:    featureType,
+          name,
+          'feature-color': TYPE_COLORS[featureType] || '#00ff88',
+          is_approximate:  false,
+          source:          'user_draw',
+          '@id':           uuidv4(),
+        },
+      };
+
+      geojsonData.features.push(newFeature);
+      map.getSource('golf-features').setData(geojsonData);
+      populateFilters();
+      updateFeatureLegend(geojsonData);
+      fitToBounds({ type: 'FeatureCollection', features: [newFeature] });
+      await saveGeojson();
+
+      nameInput.value = autoDrawName(holeValue, featureType);
+      resetDrawPanel();
+    }
+
+    // ── Save GeoJSON locally ──
+    async function saveGeojson() {
+      localStorage.setItem(GEOJSON_STORAGE_KEY, JSON.stringify(geojsonData));
+    }
+
+    // ── Map load ──
+    map.on('load', async () => {
+      geojsonData = readJsonState(GEOJSON_STORAGE_KEY, { type: 'FeatureCollection', features: [] });
+      midpoints = readJsonState(MIDPOINTS_STORAGE_KEY, []);
+
+      map.addSource('golf-features', { type: 'geojson', data: geojsonData });
+
+      map.addLayer({ id: 'golf-corridor-fill', type: 'fill', source: 'golf-features',
+        filter: BASE_FILTERS['golf-corridor-fill'],
+        paint: { 'fill-color': '#2a4a2a', 'fill-opacity': 0.10 } });
+
+      map.addLayer({ id: 'golf-corridor-line', type: 'line', source: 'golf-features',
+        filter: BASE_FILTERS['golf-corridor-line'],
+        paint: { 'line-color': '#3a6a3a', 'line-width': 1, 'line-dasharray': [5, 4], 'line-opacity': 0.5 } });
+
+      map.addLayer({ id: 'golf-fill', type: 'fill', source: 'golf-features',
+        filter: BASE_FILTERS['golf-fill'],
+        paint: { 'fill-color': colorExpr, 'fill-opacity': 0.65 } });
+
+      map.addLayer({ id: 'golf-outline', type: 'line', source: 'golf-features',
+        filter: BASE_FILTERS['golf-outline'],
+        paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.9 } });
+
+      map.addLayer({ id: 'golf-circle', type: 'circle', source: 'golf-features',
+        filter: BASE_FILTERS['golf-circle'],
+        paint: {
+          'circle-radius': pointRadiusExpr,
+          'circle-color': pointColorExpr,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#000',
+        } });
+
+      populateFilters();
+      updateFeatureLegend(geojsonData);
+      fitToBounds(geojsonData);
+      midpoints.forEach(p => addMarker(p.name, p.lat, p.lng));
+      updateMidpointLegend(midpoints);
+
+      setupDrag();
+
+      map.on('draw.create', async (e) => {
+        map.doubleClickZoom.enable();
+
+        if (!e.features.length) { resetDrawPanel(); return; }
+        const geometry = e.features[0].geometry;
+        draw.deleteAll();
+        await addDrawnFeature(geometry);
+      });
+    });
+
+    // ── Draggable points ──
+    function setupDrag() {
+      let dragging = false;
+      let dragName = null;
+
+      map.on('mouseenter', 'golf-circle', () => {
+        if (!midpointMode) map.getCanvas().style.cursor = 'grab';
+      });
+      map.on('mouseleave', 'golf-circle', () => {
+        if (!dragging && !midpointMode) map.getCanvas().style.cursor = '';
+      });
+
+      let activePopup = null;
+
+      map.on('mousedown', 'golf-circle', (e) => {
+        if (midpointMode) return;
+        e.preventDefault();
+        const startPos  = e.point;
+        const clickName = e.features[0].properties.name;
+        const clickCoords = e.features[0].geometry.coordinates.slice();
+        let moved = false;
+        dragName = clickName;
+        map.dragPan.disable();
+        map.getCanvas().style.cursor = 'grabbing';
+
+        function onMove(ev) {
+          const dx = ev.point.x - startPos.x;
+          const dy = ev.point.y - startPos.y;
+          if (!moved && Math.sqrt(dx*dx + dy*dy) > 4) moved = true;
+          if (!moved) return;
+          dragging = true;
+          const { lng, lat } = ev.lngLat;
+          const idx = geojsonData.features.findIndex(f => f.properties?.name === dragName);
+          if (idx !== -1) {
+            geojsonData.features[idx].geometry.coordinates = [lng, lat];
+            if (geojsonData.features[idx].bbox) geojsonData.features[idx].bbox = [lng, lat, lng, lat];
+            map.getSource('golf-features').setData(geojsonData);
+          }
+        }
+
+        async function onUp() {
+          map.off('mousemove', onMove);
+          map.dragPan.enable();
+          map.getCanvas().style.cursor = 'grab';
+
+          if (dragging) {
+            dragging = false;
+            await saveGeojson();
+            return;
+          }
+
+          // No drag → show delete popup
+          if (activePopup) { activePopup.remove(); activePopup = null; }
+
+          const content = document.createElement('div');
+          const label   = document.createElement('span');
+          label.className   = 'popup-name';
+          label.textContent = clickName;
+
+          const btn = document.createElement('button');
+          btn.className   = 'popup-delete-btn';
+          btn.textContent = '× Delete';
+          btn.addEventListener('click', () => {
+            const idx = geojsonData.features.findIndex(f => f.properties?.name === clickName);
+            if (idx !== -1) {
+              geojsonData.features.splice(idx, 1);
+              map.getSource('golf-features').setData(geojsonData);
+              populateFilters();
+              updateFeatureLegend(geojsonData);
+              saveGeojson();
+            }
+            if (activePopup) { activePopup.remove(); activePopup = null; }
+          });
+
+          content.appendChild(label);
+          content.appendChild(btn);
+
+          activePopup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '220px' })
+            .setLngLat(clickCoords)
+            .setDOMContent(content)
+            .addTo(map);
+
+          activePopup.on('close', () => { activePopup = null; });
+        }
+
+        map.on('mousemove', onMove);
+        map.once('mouseup', onUp);
+      });
+    }
+
+    // ── Static status ──
+    const statusEl  = document.getElementById('status');
+    statusEl.textContent = 'STATIC';
+    statusEl.style.color = '#333';
+
+    // ── Download ──
+    document.getElementById('download-btn').addEventListener('click', () => {
+      const courseId = document.getElementById('meta-course-id').value.trim()
+        || geojsonData.features[0]?.properties?.course_id || 'course';
+      const holeValue = document.getElementById('meta-hole-select').value;
+      const holeName  = String(holeValue) === COURSE_SCOPE ? COURSE_SCOPE : `hole${holeValue}`;
+      const name     = `${courseId}_${holeName}_features.geojson`;
+      const blob     = new Blob([JSON.stringify(geojsonData, null, 2)], { type: 'application/json' });
+      const url      = URL.createObjectURL(blob);
+      const a        = Object.assign(document.createElement('a'), { href: url, download: name });
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('import-btn').addEventListener('click', () => {
+      document.getElementById('import-file-input').click();
+    });
+
+    document.getElementById('import-file-input').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      let imported;
+      try {
+        imported = JSON.parse(await file.text());
+      } catch {
+        return;
+      }
+      if (imported.type !== 'FeatureCollection' || !Array.isArray(imported.features)) return;
+      geojsonData = imported;
+      map.getSource('golf-features').setData(geojsonData);
+      populateFilters();
+      applyFilters();
+      updateFeatureLegend(geojsonData);
+      await saveGeojson();
+      e.target.value = '';
+    });
+
+    // ── Midpoint name panel setup ──
+    const mpHoleSelect = document.getElementById('mp-hole-select');
+    const mpTypeSelect = document.getElementById('mp-type-select');
+
+    mpHoleSelect.innerHTML = holeSelectOptions('1');
+
+    function generateMidpointName() {
+      const hole = mpHoleSelect.value;
+      const type = mpTypeSelect.value;
+      const base = `${featureScopeName(hole)}_${type}`;
+      // Auto-increment if name already taken
+      const existing = Array.from(markerMap.keys());
+      if (!existing.includes(base)) return base;
+      let n = 2;
+      while (existing.includes(`${base}_${n}`)) n++;
+      return `${base}_${n}`;
+    }
+
+    function syncMidpointName() {
+      if (COURSE_FEATURE_TYPES.has(mpTypeSelect.value)) mpHoleSelect.value = COURSE_SCOPE;
+      document.getElementById('midpoint-name-input').value = generateMidpointName();
+    }
+
+    mpHoleSelect.addEventListener('change', syncMidpointName);
+    mpTypeSelect.addEventListener('change', syncMidpointName);
+
+    // ── Midpoint mode ──
+    const midpointBtn = document.getElementById('midpoint-btn');
+    const namePanel   = document.getElementById('name-panel');
+    const nameInput   = document.getElementById('midpoint-name-input');
+
+    function setMidpointMode(active) {
+      midpointMode = active;
+      midpointBtn.classList.toggle('active', active);
+      document.getElementById('map').classList.toggle('midpoint-active', active);
+      map.getCanvas().style.cursor = active ? 'crosshair' : '';
+      if (!active) { namePanel.style.display = 'none'; pendingLngLat = null; }
+    }
+    midpointBtn.addEventListener('click', () => setMidpointMode(!midpointMode));
+
+    map.on('click', (e) => {
+      if (!midpointMode) return;
+      pendingLngLat = e.lngLat;
+      syncMidpointName();
+      namePanel.style.display = 'flex';
+      nameInput.focus(); nameInput.select();
+    });
+
+    async function saveMidpoint() {
+      const name = nameInput.value.trim();
+      if (!name || !pendingLngLat) return;
+      const { lat, lng } = pendingLngLat;
+      midpoints = midpoints.filter(m => m.name !== name);
+      midpoints.push({ name, lat, lng });
+      saveMidpoints();
+      addMarker(name, lat, lng);
+      updateMidpointLegend(midpoints);
+      nameInput.value = '';
+      namePanel.style.display = 'none';
+      pendingLngLat = null;
+    }
+
+    document.getElementById('name-save-btn').addEventListener('click', saveMidpoint);
+    document.getElementById('name-cancel-btn').addEventListener('click', () => { namePanel.style.display = 'none'; pendingLngLat = null; });
+    nameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveMidpoint();
+      if (e.key === 'Escape') { namePanel.style.display = 'none'; pendingLngLat = null; }
+    });
+
+    document.getElementById('clear-midpoints-btn').addEventListener('click', async () => {
+      midpoints = [];
+      saveMidpoints();
+      clearMarkers(); updateMidpointLegend([]);
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', async () => {
+      geojsonData = { type: 'FeatureCollection', features: [] };
+      map.getSource('golf-features').setData(geojsonData);
+      populateFilters();
+      updateFeatureLegend(geojsonData);
+      await saveGeojson();
+    });
+
+    // ── Metadata bar ──
+    const metaHoleSelect = document.getElementById('meta-hole-select');
+    metaHoleSelect.innerHTML = holeSelectOptions('1');
+
+    document.getElementById('meta-course-name').addEventListener('input', function () {
+      document.getElementById('meta-course-id').value =
+        this.value.toLowerCase().trim().replace(/\s+/g, '_');
+    });
+
+    // ── Draw toolbar ──
+    document.getElementById('draw-type-select').addEventListener('change', syncDrawName);
+    metaHoleSelect.addEventListener('change', syncDrawName);
+
+    function finishPolygon() {
+      if (draw.getMode() === 'draw_polygon') {
+        draw.changeMode('simple_select');
+      }
+    }
+
+    function circleRadiusMeters() {
+      const radius = parseFloat(document.getElementById('draw-radius-input').value);
+      return Number.isFinite(radius) && radius > 0 ? radius : 20;
+    }
+
+    document.getElementById('draw-polygon-btn').addEventListener('click', () => {
+      circleDrawMode = false;
+      map.doubleClickZoom.disable();
+      draw.changeMode('draw_polygon');
+      const statusEl = document.getElementById('draw-status');
+      statusEl.innerHTML =
+        '<button class="draw-btn" id="finish-btn" style="width:100%;margin-bottom:4px">✓ Finish Polygon</button>' +
+        '<div style="font-size:10px;color:#444;text-align:center">click corners · Enter or button to close</div>';
+      document.getElementById('finish-btn').addEventListener('click', finishPolygon);
+    });
+
+    document.getElementById('draw-circle-btn').addEventListener('click', () => {
+      setMidpointMode(false);
+      draw.changeMode('simple_select');
+      draw.deleteAll();
+      map.doubleClickZoom.enable();
+      circleDrawMode = true;
+      map.getCanvas().style.cursor = 'crosshair';
+      document.getElementById('draw-status').textContent =
+        `click center to place ${circleRadiusMeters()}m circle`;
+    });
+
+    document.getElementById('draw-point-btn').addEventListener('click', () => {
+      circleDrawMode = false;
+      draw.changeMode('draw_point');
+      document.getElementById('draw-status').textContent = 'click to place point';
+    });
+
+    document.getElementById('draw-radius-input').addEventListener('input', () => {
+      if (circleDrawMode) {
+        document.getElementById('draw-status').textContent =
+          `click center to place ${circleRadiusMeters()}m circle`;
+      }
+    });
+
+    map.on('click', async (e) => {
+      if (!circleDrawMode || midpointMode) return;
+      const geometry = circleGeometry(e.lngLat, circleRadiusMeters());
+      circleDrawMode = false;
+      await addDrawnFeature(geometry);
+    });
+
+    // Enter closes polygon; Escape cancels
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && draw.getMode() === 'draw_polygon') {
+        finishPolygon();
+      } else if (e.key === 'Escape') {
+        map.doubleClickZoom.enable();
+        draw.changeMode('simple_select');
+        draw.deleteAll();
+        resetDrawPanel();
+      }
+    });
+  </script>
+</body>
+</html>
