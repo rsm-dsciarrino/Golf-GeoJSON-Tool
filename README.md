@@ -55,7 +55,7 @@ Course-level features use `properties.hole_number: "course"`.
 
 ## GitHub Pages
 
-The static GitHub Pages viewer lives in `docs/index.html` and deploys from `.github/workflows/pages.yml`.
+The static GitHub Pages viewer lives in `docs/index.html`. The root `index.html` redirects GitHub Pages visitors into that viewer.
 
 Expected URL:
 
@@ -117,9 +117,9 @@ golf-geojson-tool/
 │   ├── server.js                     # Express server for GeoJSON, midpoints, static map, and SSE
 │   ├── public/index.html             # Mapbox viewer and drawing UI
 │   └── package.json
+├── index.html                        # GitHub Pages redirect to docs/
 ├── docs/
 │   └── index.html                    # Static GitHub Pages viewer
-├── .github/workflows/pages.yml       # GitHub Pages deployment workflow
 ├── mcp-server/
 │   ├── index.js                      # MCP server with push/update/get/clear tools
 │   └── package.json
