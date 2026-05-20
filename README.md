@@ -1,20 +1,31 @@
 # Golf GeoJSON Tool
 
-A live Mapbox satellite viewer for drawing, reviewing, exporting, and receiving GeoJSON golf course features. It includes a browser-based drawing UI plus an MCP server so Claude can push generated FeatureCollections directly to the map.
+A live Mapbox satellite viewer for drawing, reviewing, exporting, and receiving GeoJSON golf course features. It includes a browser-based drawing UI plus an MCP server so Claude can import and push course data directly to the map.
 
 ## How It Works
 
-1. Place midpoint anchors or draw features directly in the browser.
-2. Claude can call `get_midpoints`, trace satellite imagery with the `golf-geojson` skill, and push a FeatureCollection with `push_geojson`.
-3. The viewer receives GeoJSON through `/geojson`, updates the Mapbox source, and broadcasts live refreshes over SSE.
-4. Browser-created features can be exported as GeoJSON or saved back to the viewer server.
+With the viewer and MCP server running, just ask Claude:
+
+> "Import Pebble Beach Golf Links"
+
+Claude will geocode the course, query OpenStreetMap for greens, fairways, bunkers, and tee boxes, assign features to holes using centerline proximity, and push everything to the live map — all in one step.
+
+From there:
+- Click any feature to edit its name, type, or hole assignment.
+- Use the lasso tool to bulk-select and delete extras.
+- Draw additional polygons or points directly on the map.
+- Filter by hole to focus on one hole at a time.
+- Export the finished FeatureCollection as a `.geojson` file.
 
 ## Viewer Features
 
+- Import any golf course from OpenStreetMap by name — just ask Claude.
 - Draw polygons, points, and meter-radius circles. Circles are stored as closed GeoJSON `Polygon` features.
+- Click any feature to edit its name, type, and hole assignment in a popup.
+- Lasso-select multiple features and delete them at once.
 - Assign metadata: course name, course ID, and scope (`Course` or `Hole 1` through `Hole 18`).
-- Filter by scope and feature type.
-- Place named midpoint anchors for AI tracing and delete individual midpoints or map features.
+- Filter by scope and feature type. Switching holes zooms to that hole automatically.
+- Place named midpoint anchors as reference points.
 - Export the current FeatureCollection as a `.geojson` file.
 - Import GeoJSON files in the static GitHub Pages viewer.
 
@@ -132,12 +143,23 @@ golf-geojson-tool/
 
 | Tool | Description |
 |---|---|
+| `import_from_osm` | Import a golf course from OpenStreetMap by name or coordinates |
 | `push_geojson` | Push a full FeatureCollection to the map |
 | `update_feature` | Replace one feature by its `name` property |
 | `get_geojson` | Get the current FeatureCollection from the map |
 | `clear_map` | Clear all features |
 | `get_midpoints` | Get the named midpoint anchors currently placed in the viewer |
 | `clear_midpoints` | Clear all midpoint anchors |
+
+### `import_from_osm` parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `course_name` | string | Course name to geocode (e.g. `"Pebble Beach Golf Links"`) |
+| `lat` / `lng` | number | Explicit coordinates if geocoding fails |
+| `radius_m` | number | Search radius in meters (default 1500) |
+| `hole_number` | number | Import only this hole (1–18); omit for all holes |
+| `append` | boolean | Merge with existing map features instead of replacing |
 
 ## Viewer API
 
