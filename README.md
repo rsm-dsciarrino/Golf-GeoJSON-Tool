@@ -62,7 +62,16 @@ Course-level features use `properties.hole_number: "course"`.
 
 ### Prerequisites
 - Node.js 18+
-- A Mapbox access token ([mapbox.com](https://mapbox.com))
+- A Mapbox public access token (see below)
+
+### Getting a Mapbox Token
+
+1. Create a free account at [mapbox.com](https://account.mapbox.com/auth/signup/).
+2. Go to your [Account Tokens page](https://account.mapbox.com/access-tokens/).
+3. Click **Create a token**, give it a name, and leave the default public scopes as-is.
+4. Copy the token — it starts with `pk.`
+
+The free tier includes 50,000 map loads per month, which is more than enough for local use.
 
 ## GitHub Pages
 
