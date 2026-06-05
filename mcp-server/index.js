@@ -88,6 +88,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: 'spread_hazards_to_holes',
+      description: 'Duplicate hazard features (water by default) onto every hole they surround, so a hazard between holes shows up on each of those holes. A hole "surrounds" a hazard when its playing geometry (fairway/green/tee_box) lies within max_distance_m of the hazard. Each copy is tagged with that hole_number and a shared hazard_group id (so the copies are traceable and the operation is idempotent — re-running collapses prior copies first). Requires hole_number to be assigned on the hole footprint features.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          feature_types: { type: 'array', items: { type: 'string' }, description: 'Feature types to treat as hazards (default ["water"]).' },
+          max_distance_m: { type: 'number', description: 'Max distance in meters from a hole\'s fairway/green/tee_box to the hazard for that hole to count as surrounding it (default 35).' },
+        },
+      },
+    },
   ],
 }));
 
@@ -468,6 +479,98 @@ out body geom;`;
         content: [{
           type: 'text',
           text: `Generated ${markers.length} markers: ${teeCount} tee_center, ${greenCount} green_center, and ${greenCount} each of green_front/green_back. Total on map: ${feats.length + markers.length}.`,
+        }],
+      };
+    }
+
+    case 'spread_hazards_to_holes': {
+      const types = Array.isArray(args.feature_types) && args.feature_types.length ? args.feature_types : ['water'];
+      const maxDist = typeof args.max_distance_m === 'number' ? args.max_distance_m : 35;
+      const typeSet = new Set(types);
+      const FOOT = new Set(['fairway', 'green', 'tee_box']);
+
+      const res = await fetch(`${VIEWER_URL}/geojson`);
+      const fc = await res.json();
+      const feats = fc.features || [];
+
+      // Meters-per-degree at the course latitude for distance math.
+      const polyPts = feats.filter(f => f.geometry?.type === 'Polygon').flatMap(f => f.geometry.coordinates[0]);
+      const latRef = polyPts.length ? polyPts.reduce((s, p) => s + p[1], 0) / polyPts.length : 0;
+      const MX = 111320 * Math.cos(latRef * Math.PI / 180), MY = 110540;
+      const vertsOf = f => f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : [f.geometry.coordinates];
+      function distM(a, b) {
+        let best = Infinity;
+        for (const p of vertsOf(a)) for (const q of vertsOf(b)) {
+          const d = ((p[0] - q[0]) * MX) ** 2 + ((p[1] - q[1]) * MY) ** 2;
+          if (d < best) best = d;
+        }
+        return Math.sqrt(best);
+      }
+
+      const holeFoot = new Map();
+      for (const f of feats) {
+        if (FOOT.has(f.properties?.feature_type)) {
+          const h = f.properties.hole_number;
+          if (!holeFoot.has(h)) holeFoot.set(h, []);
+          holeFoot.get(h).push(f);
+        }
+      }
+      if (!holeFoot.size) {
+        return { content: [{ type: 'text', text: 'No fairway/green/tee_box features with hole_number found — assign holes before spreading hazards.' }] };
+      }
+
+      const hazards = feats.filter(f => typeSet.has(f.properties?.feature_type));
+      const nonHazard = feats.filter(f => !typeSet.has(f.properties?.feature_type));
+
+      // Collapse existing groups to one representative each so re-runs are idempotent.
+      const groups = new Map();
+      for (const h of hazards) {
+        const key = h.properties.hazard_group ?? h.properties.osm_id ?? h.properties['@id'];
+        if (!groups.has(key)) groups.set(key, h);
+      }
+
+      function mkUuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+      }
+
+      const counts = {};
+      const newHazards = [];
+      for (const rep of groups.values()) {
+        const perHole = [];
+        for (const [hole, hfs] of holeFoot) {
+          perHole.push([hole, Math.min(...hfs.map(hf => distM(rep, hf)))]);
+        }
+        let within = perHole.filter(([, d]) => d <= maxDist).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+        if (!within.length) within = [perHole.sort((a, b) => a[1] - b[1])[0][0]];
+
+        const groupId = String(rep.properties.osm_id ?? rep.properties['@id']);
+        const ftype = rep.properties.feature_type;
+        for (const hole of within) {
+          const key = `${hole}_${ftype}`;
+          counts[key] = (counts[key] || 0) + 1;
+          const n = counts[key];
+          const dup = JSON.parse(JSON.stringify(rep));
+          dup.properties.hole_number = hole;
+          dup.properties.name = `hole_${hole}_${ftype}${n === 1 ? '' : `_${n}`}`;
+          dup.properties.hazard_group = groupId;
+          dup.properties['@id'] = mkUuid();
+          newHazards.push(dup);
+        }
+      }
+
+      await fetch(`${VIEWER_URL}/geojson`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'FeatureCollection', features: [...nonHazard, ...newHazards] }),
+      });
+
+      return {
+        content: [{
+          type: 'text',
+          text: `Spread ${groups.size} hazard(s) (${types.join(', ')}) across surrounding holes within ${maxDist}m → ${newHazards.length} hole-assigned copies. Total on map: ${nonHazard.length + newHazards.length}.`,
         }],
       };
     }
