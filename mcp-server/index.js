@@ -73,6 +73,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: 'generate_tee_green_markers',
+      description: 'Automatically derive point markers from the polygons already on the map: a tee_center for every tee_box, and green_front / green_center / green_back for every green. Front/back are placed where the hole\'s line of play (fairway→green, or tee→green if no fairway) crosses the green edges. Features must already have hole_number assigned. Existing markers of these types are replaced by default.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          replace_existing: { type: 'boolean', description: 'Remove existing tee_center/green_front/green_center/green_back markers before generating (default true).' },
+        },
+      },
+    },
   ],
 }));
 
@@ -302,6 +312,141 @@ out body geom;`;
         content: [{
           type: 'text',
           text: `Imported ${newFeatures.length} OSM features (${typeSummary}) for "${courseName}"${holeLabel} → ${mode}. Total on map: ${finalFeatures.length}.`,
+        }],
+      };
+    }
+
+    case 'generate_tee_green_markers': {
+      const replaceExisting = args.replace_existing !== false;
+      const res = await fetch(`${VIEWER_URL}/geojson`);
+      const fc = await res.json();
+      let feats = fc.features || [];
+      const MARKERS = new Set(['tee_center', 'green_front', 'green_center', 'green_back']);
+      if (replaceExisting) feats = feats.filter(f => !MARKERS.has(f.properties?.feature_type));
+
+      // Local-origin equirectangular projection. Subtracting a reference point keeps
+      // coordinate magnitudes small so the shoelace centroid stays numerically stable.
+      const polyPts = feats.filter(f => f.geometry?.type === 'Polygon').flatMap(f => f.geometry.coordinates[0]);
+      if (!polyPts.length) {
+        return { content: [{ type: 'text', text: 'No polygon features on the map to derive markers from.' }] };
+      }
+      const lon0 = polyPts.reduce((s, p) => s + p[0], 0) / polyPts.length;
+      const lat0 = polyPts.reduce((s, p) => s + p[1], 0) / polyPts.length;
+      const K = Math.cos(lat0 * Math.PI / 180);
+      const toXY = ([lon, lat]) => [(lon - lon0) * K, lat - lat0];
+      const toLL = ([x, y]) => [x / K + lon0, y + lat0];
+
+      function centroid(ringLL) {
+        const r = ringLL.map(toXY);
+        if (r[0][0] !== r[r.length - 1][0] || r[0][1] !== r[r.length - 1][1]) r.push(r[0]);
+        let A = 0, cx = 0, cy = 0;
+        for (let i = 0; i < r.length - 1; i++) {
+          const [x0, y0] = r[i], [x1, y1] = r[i + 1];
+          const cr = x0 * y1 - x1 * y0;
+          A += cr; cx += (x0 + x1) * cr; cy += (y0 + y1) * cr;
+        }
+        A *= 0.5;
+        if (Math.abs(A) < 1e-18) {
+          const n = r.length - 1;
+          return [r.slice(0, -1).reduce((s, p) => s + p[0], 0) / n, r.slice(0, -1).reduce((s, p) => s + p[1], 0) / n];
+        }
+        return [cx / (6 * A), cy / (6 * A)];
+      }
+
+      // Cast a ray from P along unit vector u; return nearest boundary crossing (in XY).
+      function rayHit(P, u, ringLL) {
+        const r = ringLL.map(toXY);
+        if (r[0][0] !== r[r.length - 1][0] || r[0][1] !== r[r.length - 1][1]) r.push(r[0]);
+        let bestT = Infinity, hit = null;
+        for (let i = 0; i < r.length - 1; i++) {
+          const A = r[i], B = r[i + 1];
+          const ex = B[0] - A[0], ey = B[1] - A[1];
+          const det = ex * u[1] - ey * u[0];
+          if (Math.abs(det) < 1e-18) continue;
+          const dx = A[0] - P[0], dy = A[1] - P[1];
+          const t = (ex * dy - ey * dx) / det;
+          const s = (u[0] * dy - u[1] * dx) / det;
+          if (t > 1e-12 && s >= -1e-9 && s <= 1 + 1e-9 && t < bestT) {
+            bestT = t; hit = [P[0] + t * u[0], P[1] + t * u[1]];
+          }
+        }
+        return hit;
+      }
+
+      const avg = pts => [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
+
+      const byHole = new Map();
+      for (const f of feats) {
+        const h = f.properties?.hole_number;
+        if (!byHole.has(h)) byHole.set(h, {});
+        const g = byHole.get(h);
+        (g[f.properties.feature_type] ||= []).push(f);
+      }
+
+      const COLORS = { tee_center: '#c8a055', green_front: '#5aae5a', green_center: '#5aae5a', green_back: '#5aae5a' };
+      function mkUuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const rr = Math.random() * 16 | 0;
+          return (c === 'x' ? rr : (rr & 0x3 | 0x8)).toString(16);
+        });
+      }
+      const mk = (type, ll, src, name) => ({
+        type: 'Feature', bbox: [ll[0], ll[1], ll[0], ll[1]],
+        geometry: { type: 'Point', coordinates: ll },
+        properties: {
+          course_id: src.course_id, course_name: src.course_name, hole_number: src.hole_number,
+          feature_type: type, name, 'feature-color': COLORS[type],
+          is_approximate: true, source: 'derived', '@id': mkUuid(),
+        },
+      });
+
+      const markers = [];
+      const counts = {};
+      const tally = key => (counts[key] = (counts[key] || 0) + 1);
+      const suffix = n => (n === 1 ? '' : `_${n}`);
+
+      for (const [hole, g] of byHole) {
+        let ref = null;
+        if (g.fairway?.length) ref = avg(g.fairway.map(f => centroid(f.geometry.coordinates[0])));
+        else if (g.tee_box?.length) ref = avg(g.tee_box.map(f => centroid(f.geometry.coordinates[0])));
+
+        for (const f of g.tee_box || []) {
+          const n = tally(`${hole}_tee_center`);
+          markers.push(mk('tee_center', toLL(centroid(f.geometry.coordinates[0])), f.properties, `hole_${hole}_tee_center${suffix(n)}`));
+        }
+
+        for (const f of g.green || []) {
+          const ring = f.geometry.coordinates[0];
+          const c = centroid(ring);
+          const n = tally(`${hole}_green`);
+          let front = c, back = c;
+          if (ref) {
+            const dx = c[0] - ref[0], dy = c[1] - ref[1];
+            const L = Math.hypot(dx, dy);
+            if (L > 0) {
+              const u = [dx / L, dy / L];
+              front = rayHit(c, [-u[0], -u[1]], ring) || c; // toward the approach
+              back = rayHit(c, [u[0], u[1]], ring) || c;     // away from the approach
+            }
+          }
+          markers.push(mk('green_center', toLL(c), f.properties, `hole_${hole}_green_center${suffix(n)}`));
+          markers.push(mk('green_front', toLL(front), f.properties, `hole_${hole}_green_front${suffix(n)}`));
+          markers.push(mk('green_back', toLL(back), f.properties, `hole_${hole}_green_back${suffix(n)}`));
+        }
+      }
+
+      await fetch(`${VIEWER_URL}/geojson`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'FeatureCollection', features: [...feats, ...markers] }),
+      });
+
+      const teeCount = markers.filter(m => m.properties.feature_type === 'tee_center').length;
+      const greenCount = markers.filter(m => m.properties.feature_type === 'green_center').length;
+      return {
+        content: [{
+          type: 'text',
+          text: `Generated ${markers.length} markers: ${teeCount} tee_center, ${greenCount} green_center, and ${greenCount} each of green_front/green_back. Total on map: ${feats.length + markers.length}.`,
         }],
       };
     }
