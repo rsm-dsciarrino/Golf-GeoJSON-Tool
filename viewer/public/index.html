@@ -782,9 +782,14 @@
             <span style="flex:1;font-size:10px;color:#aaa">${selectedIndices.size} selected</span>
             <button class="draw-btn" id="delete-selected-btn" style="border-color:#552222;color:#ff6666;flex:0 0 auto;padding:4px 8px">Delete</button>
             <button class="draw-btn" id="clear-sel-btn" style="flex:0 0 auto;padding:4px 8px">Clear</button>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center;margin-top:4px">
+            <select class="filter-select" id="lasso-hole-assign" style="flex:1;min-width:0;font-size:10px;padding:3px 20px 3px 6px">${holeSelectOptions('1')}</select>
+            <button class="draw-btn" id="assign-hole-btn" style="flex:0 0 auto;padding:4px 8px;border-color:#1a3a5a;color:#4a9adc">Assign</button>
           </div>`;
         document.getElementById('delete-selected-btn').addEventListener('click', deleteSelected);
         document.getElementById('clear-sel-btn').addEventListener('click', clearSelection);
+        document.getElementById('assign-hole-btn').addEventListener('click', assignHoleToSelected);
       } else {
         statusEl.textContent = lassoMode ? 'drag to select features' : '';
       }
@@ -804,6 +809,21 @@
       updateFeatureLegend(geojsonData);
       saveGeojson();
       selectedIndices.clear();
+      updateLassoStatus();
+    }
+
+    function assignHoleToSelected() {
+      const holeVal = document.getElementById('lasso-hole-assign').value;
+      const newHoleNumber = featureHoleValue(holeVal);
+      const newPrefix = featureScopeName(holeVal);
+      [...selectedIndices].forEach(i => {
+        const props = geojsonData.features[i].properties;
+        props.hole_number = newHoleNumber;
+        if (props.name) props.name = props.name.replace(/^(hole_\d+|course)_/, `${newPrefix}_`);
+      });
+      map.getSource('golf-features').setData(geojsonData);
+      map.getSource('golf-selected').setData({ type: 'FeatureCollection', features: [...selectedIndices].map(i => geojsonData.features[i]) });
+      populateFilters(); updateFeatureLegend(geojsonData); saveGeojson();
       updateLassoStatus();
     }
 
