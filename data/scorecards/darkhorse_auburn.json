@@ -1,0 +1,26 @@
+{
+  "course_id": "darkhorse_auburn",
+  "course_name": "DarkHorse Golf Club",
+  "tee": "Black",
+  "source": "aimy.golf / bluegolf — par 72, 7053 yds (Black)",
+  "holes": {
+    "1":  { "par": 4, "handicap": 10, "yardage": 448 },
+    "2":  { "par": 4, "handicap": 16, "yardage": 344 },
+    "3":  { "par": 3, "handicap": 8,  "yardage": 235 },
+    "4":  { "par": 5, "handicap": 2,  "yardage": 559 },
+    "5":  { "par": 4, "handicap": 4,  "yardage": 465 },
+    "6":  { "par": 3, "handicap": 18, "yardage": 156 },
+    "7":  { "par": 5, "handicap": 6,  "yardage": 541 },
+    "8":  { "par": 4, "handicap": 14, "yardage": 448 },
+    "9":  { "par": 4, "handicap": 12, "yardage": 405 },
+    "10": { "par": 4, "handicap": 13, "yardage": 388 },
+    "11": { "par": 5, "handicap": 1,  "yardage": 577 },
+    "12": { "par": 4, "handicap": 9,  "yardage": 421 },
+    "13": { "par": 3, "handicap": 11, "yardage": 184 },
+    "14": { "par": 4, "handicap": 17, "yardage": 304 },
+    "15": { "par": 4, "handicap": 3,  "yardage": 446 },
+    "16": { "par": 3, "handicap": 7,  "yardage": 175 },
+    "17": { "par": 4, "handicap": 5,  "yardage": 440 },
+    "18": { "par": 5, "handicap": 15, "yardage": 517 }
+  }
+}

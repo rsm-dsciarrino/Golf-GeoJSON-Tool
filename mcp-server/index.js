@@ -4,6 +4,15 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync, readFileSync } from 'fs';
+import dotenv from 'dotenv';
+import { uploadCourse } from './supabase.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+// Secrets live in the gitignored project-root .env (SUPABASE_CONNECTION_STRING, etc.)
+dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const VIEWER_URL = process.env.VIEWER_URL || 'http://localhost:3000';
 
@@ -97,6 +106,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           feature_types: { type: 'array', items: { type: 'string' }, description: 'Feature types to treat as hazards (default ["water"]).' },
           max_distance_m: { type: 'number', description: 'Max distance in meters from a hole\'s fairway/green/tee_box to the hazard for that hole to count as surrounding it (default 35).' },
         },
+      },
+    },
+    {
+      name: 'upload_to_supabase',
+      description: 'Upload the current map\'s GeoJSON to the Supabase PostGIS database (courses + course_features). Upserts the course row and replaces that course\'s features (delete-by-course_id then insert). Features without a hole_number are skipped (the column is NOT NULL). Set dry_run=true to validate inside a rolled-back transaction without persisting. Requires SUPABASE_CONNECTION_STRING in the project .env.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          course_id: { type: 'string', description: 'Course slug / primary key, lowercase [a-z0-9_] (e.g. "darkhorse_auburn"). Auto-derived from course_name if omitted.' },
+          course_name: { type: 'string', description: 'Display name stored on the courses row (e.g. "DarkHorse Golf Club").' },
+          city: { type: 'string', description: 'City for the courses row (e.g. "Auburn").' },
+          state: { type: 'string', description: 'State for the courses row (e.g. "CA").' },
+          replace: { type: 'boolean', description: 'Delete existing features for this course_id before inserting (default true). If false, appends.' },
+          dry_run: { type: 'boolean', description: 'Run the upload in a transaction and roll it back, reporting what would change without persisting (default false).' },
+        },
+        required: ['course_name'],
       },
     },
   ],
@@ -571,6 +596,41 @@ out body geom;`;
         content: [{
           type: 'text',
           text: `Spread ${groups.size} hazard(s) (${types.join(', ')}) across surrounding holes within ${maxDist}m → ${newHazards.length} hole-assigned copies. Total on map: ${nonHazard.length + newHazards.length}.`,
+        }],
+      };
+    }
+
+    case 'upload_to_supabase': {
+      const connectionString = process.env.SUPABASE_CONNECTION_STRING;
+      if (!connectionString) {
+        return { content: [{ type: 'text', text: 'SUPABASE_CONNECTION_STRING is not set in the project .env.' }] };
+      }
+      const course_name = args.course_name;
+      const course_id = args.course_id || course_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const res = await fetch(`${VIEWER_URL}/geojson`);
+      const geojson = await res.json();
+
+      // Optional per-course scorecard (par/handicap/yardage) → populates course_holes.
+      let scorecard = null;
+      const cardPath = join(__dirname, '..', 'data', 'scorecards', `${course_id}.json`);
+      if (existsSync(cardPath)) scorecard = JSON.parse(readFileSync(cardPath, 'utf8'));
+
+      const r = await uploadCourse({
+        connectionString, courseId: course_id, courseName: course_name,
+        city: args.city ?? null, state: args.state ?? null, geojson,
+        replace: args.replace !== false, commit: !args.dry_run, scorecard,
+      });
+
+      const mode = r.committed ? 'Uploaded' : 'DRY RUN (rolled back) — would upload';
+      const skipMsg = r.skipped ? ` Skipped ${r.skipped} feature(s) with no hole_number.` : '';
+      const delMsg = r.deleted ? ` Replaced ${r.deleted} existing feature(s).` : '';
+      const holesMsg = r.holesUpserted
+        ? ` Populated ${r.holesUpserted} course_holes row(s) from scorecard.`
+        : (scorecard ? '' : ` No scorecard at data/scorecards/${course_id}.json — course_holes left untouched.`);
+      return {
+        content: [{
+          type: 'text',
+          text: `${mode} ${r.inserted} feature(s) to course "${course_id}".${delMsg}${skipMsg}${holesMsg}`,
         }],
       };
     }
