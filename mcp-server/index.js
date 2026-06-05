@@ -75,11 +75,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'generate_tee_green_markers',
-      description: 'Automatically derive point markers from the polygons already on the map: a tee_center for every tee_box, and green_front / green_center / green_back for every green. Front/back are placed where the hole\'s line of play (fairway→green, or tee→green if no fairway) crosses the green edges. Features must already have hole_number assigned. Existing markers of these types are replaced by default.',
+      description: 'Automatically derive point markers from the polygons already on the map: tee_center marker(s) for tee_boxes, and green_front / green_center / green_back for every green. Front/back are placed where the hole\'s line of play (fairway→green, or tee→green if no fairway) crosses the green edges. Features must already have hole_number assigned. Existing markers of these types are replaced by default.',
       inputSchema: {
         type: 'object',
         properties: {
           replace_existing: { type: 'boolean', description: 'Remove existing tee_center/green_front/green_center/green_back markers before generating (default true).' },
+          tee_centers: {
+            type: 'string',
+            enum: ['all', 'one_per_hole'],
+            description: 'How many tee_center markers to generate per hole. "all" (default) places one for every tee_box. "one_per_hole" places a single tee_center on the back tee (the tee_box farthest from the green) — use this when downstream consumers expect exactly one tee per hole.',
+          },
         },
       },
     },
@@ -318,6 +323,7 @@ out body geom;`;
 
     case 'generate_tee_green_markers': {
       const replaceExisting = args.replace_existing !== false;
+      const teeMode = args.tee_centers === 'one_per_hole' ? 'one_per_hole' : 'all';
       const res = await fetch(`${VIEWER_URL}/geojson`);
       const fc = await res.json();
       let feats = fc.features || [];
@@ -410,7 +416,22 @@ out body geom;`;
         if (g.fairway?.length) ref = avg(g.fairway.map(f => centroid(f.geometry.coordinates[0])));
         else if (g.tee_box?.length) ref = avg(g.tee_box.map(f => centroid(f.geometry.coordinates[0])));
 
-        for (const f of g.tee_box || []) {
+        let teeBoxes = g.tee_box || [];
+        if (teeMode === 'one_per_hole' && teeBoxes.length > 1) {
+          // Pick the back tee: the tee_box centroid farthest from the green
+          // (or the line-of-play reference if the hole has no green).
+          const anchor = g.green?.length ? centroid(g.green[0].geometry.coordinates[0]) : ref;
+          if (anchor) {
+            teeBoxes = [teeBoxes.reduce((best, f) => {
+              const c = centroid(f.geometry.coordinates[0]);
+              const d = (c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2;
+              return d > best.d ? { f, d } : best;
+            }, { f: teeBoxes[0], d: -1 }).f];
+          } else {
+            teeBoxes = [teeBoxes[0]];
+          }
+        }
+        for (const f of teeBoxes) {
           const n = tally(`${hole}_tee_center`);
           markers.push(mk('tee_center', toLL(centroid(f.geometry.coordinates[0])), f.properties, `hole_${hole}_tee_center${suffix(n)}`));
         }
