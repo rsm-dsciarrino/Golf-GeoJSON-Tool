@@ -46,12 +46,16 @@ Generate ALL of the following for every hole:
 | `green_front`    | Point    | Forward edge of green (closest to fairway) |
 | `green_center`   | Point    | Center of putting surface |
 | `green_back`     | Point    | Back edge of green |
-| `hole_corridor`  | Polygon  | Broad playable corridor tee→green including rough; mark `is_approximate: true` |
 | `bunker`         | Polygon  | One feature per bunker, 12–30 pts each |
 | `target_point`   | Point    | Ideal tee shot landing zone (avoid hazards) |
 | `layup_point`    | Point    | Conservative layup option if applicable |
 
-Add `water`, `rough`, or `path` polygons if clearly visible in the image.
+Add `water` or `rough` polygons if clearly visible in the image.
+
+### Excluded feature types
+Do **not** generate `path`/cartpath or `hole_corridor` features. When importing
+from OSM, drop elements tagged `golf=cartpath`/`golf=path` and `golf=hole`. These
+clutter the map and are not wanted in the output.
 
 ## Course-Level Features
 Use `hole_number: "course"` for course-wide features:
@@ -142,7 +146,6 @@ Generate a UUID4 for every feature. Format: `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxx
 ## Quality Notes
 - Fairway and green polygons should have 12–25 points — capture actual shape, not just bounding boxes
 - Bunkers are the highest-detail features; trace every indent and lobe (15–30 pts)
-- `hole_corridor` can be coarser (8–14 pts); it's just a containing boundary
 - If a feature isn't visible, generate a plausible shape from typical dimensions and set `is_approximate: true`
 - All AI-generated features should have `is_approximate: true` and `source: "ai_trace"`
 
