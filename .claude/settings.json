@@ -7,5 +7,31 @@
         "VIEWER_URL": "http://localhost:3000"
       }
     }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(psql:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(open:*)",
+      "Bash(brew install:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git restore:*)",
+      "Bash(git checkout:*)",
+      "WebSearch",
+      "WebFetch",
+      "mcp__golf-geojson"
+    ]
   }
 }
