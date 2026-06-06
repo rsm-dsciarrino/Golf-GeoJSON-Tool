@@ -1,0 +1,17 @@
+{
+  "course_id": "black_oak_auburn",
+  "course_name": "Black Oak Golf Course",
+  "tee": "Blue",
+  "source": "greenskeeper.org / golflink — 9 holes, par 36, ~3157 yds (Blue)",
+  "holes": {
+    "1": { "par": 4, "handicap": 13, "yardage": 338 },
+    "2": { "par": 4, "handicap": 3,  "yardage": 379 },
+    "3": { "par": 5, "handicap": 5,  "yardage": 545 },
+    "4": { "par": 3, "handicap": 17, "yardage": 132 },
+    "5": { "par": 4, "handicap": 7,  "yardage": 349 },
+    "6": { "par": 5, "handicap": 11, "yardage": 524 },
+    "7": { "par": 3, "handicap": 9,  "yardage": 201 },
+    "8": { "par": 4, "handicap": 15, "yardage": 314 },
+    "9": { "par": 4, "handicap": 1,  "yardage": 382 }
+  }
+}
