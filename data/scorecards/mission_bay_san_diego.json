@@ -1,0 +1,26 @@
+{
+  "course_id": "mission_bay_san_diego",
+  "course_name": "Mission Bay Golf Course",
+  "tee": "White (back)",
+  "source": "greenskeeper.org — 18 holes, par 58 executive (14 par-3, 4 par-4), 2706 yds (White/back)",
+  "holes": {
+    "1":  { "par": 4, "handicap": 3,  "yardage": 262 },
+    "2":  { "par": 3, "handicap": 15, "yardage": 90  },
+    "3":  { "par": 3, "handicap": 7,  "yardage": 134 },
+    "4":  { "par": 3, "handicap": 13, "yardage": 95  },
+    "5":  { "par": 3, "handicap": 11, "yardage": 121 },
+    "6":  { "par": 3, "handicap": 17, "yardage": 75  },
+    "7":  { "par": 4, "handicap": 1,  "yardage": 265 },
+    "8":  { "par": 3, "handicap": 5,  "yardage": 135 },
+    "9":  { "par": 3, "handicap": 9,  "yardage": 124 },
+    "10": { "par": 4, "handicap": 4,  "yardage": 250 },
+    "11": { "par": 3, "handicap": 12, "yardage": 134 },
+    "12": { "par": 3, "handicap": 6,  "yardage": 141 },
+    "13": { "par": 3, "handicap": 8,  "yardage": 115 },
+    "14": { "par": 3, "handicap": 18, "yardage": 102 },
+    "15": { "par": 3, "handicap": 16, "yardage": 118 },
+    "16": { "par": 3, "handicap": 14, "yardage": 123 },
+    "17": { "par": 3, "handicap": 10, "yardage": 131 },
+    "18": { "par": 4, "handicap": 2,  "yardage": 291 }
+  }
+}
