@@ -1,0 +1,26 @@
+{
+  "course_id": "balboa_park_san_diego",
+  "course_name": "Balboa Park Golf Course",
+  "tee": "Blue (back)",
+  "source": "greenskeeper.org — 18 holes, par 72, 6339 yds (Blue/back); 18-hole championship course (exec 9 excluded)",
+  "holes": {
+    "1":  { "par": 4, "handicap": 15, "yardage": 344 },
+    "2":  { "par": 5, "handicap": 5,  "yardage": 502 },
+    "3":  { "par": 4, "handicap": 9,  "yardage": 379 },
+    "4":  { "par": 4, "handicap": 1,  "yardage": 371 },
+    "5":  { "par": 4, "handicap": 13, "yardage": 296 },
+    "6":  { "par": 3, "handicap": 3,  "yardage": 215 },
+    "7":  { "par": 5, "handicap": 7,  "yardage": 463 },
+    "8":  { "par": 4, "handicap": 17, "yardage": 327 },
+    "9":  { "par": 3, "handicap": 11, "yardage": 177 },
+    "10": { "par": 4, "handicap": 6,  "yardage": 439 },
+    "11": { "par": 4, "handicap": 10, "yardage": 384 },
+    "12": { "par": 4, "handicap": 4,  "yardage": 392 },
+    "13": { "par": 3, "handicap": 18, "yardage": 134 },
+    "14": { "par": 5, "handicap": 12, "yardage": 532 },
+    "15": { "par": 4, "handicap": 14, "yardage": 315 },
+    "16": { "par": 5, "handicap": 2,  "yardage": 555 },
+    "17": { "par": 3, "handicap": 16, "yardage": 198 },
+    "18": { "par": 4, "handicap": 8,  "yardage": 316 }
+  }
+}
