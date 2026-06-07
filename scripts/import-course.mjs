@@ -131,6 +131,10 @@ const toXY = ([lon, la]) => [(lon - lon0) * K, la - lat0], toLL = ([x, y]) => [x
 function centroidXY(ringLL) { const r = ringLL.map(toXY); if (r[0][0] !== r.at(-1)[0] || r[0][1] !== r.at(-1)[1]) r.push(r[0]); let A = 0, cx = 0, cy = 0; for (let i = 0; i < r.length - 1; i++) { const [x0, y0] = r[i], [x1, y1] = r[i + 1]; const cr = x0 * y1 - x1 * y0; A += cr; cx += (x0 + x1) * cr; cy += (y0 + y1) * cr; } A *= 0.5; if (Math.abs(A) < 1e-18) { const n = r.length - 1; return [r.slice(0, -1).reduce((s, p) => s + p[0], 0) / n, r.slice(0, -1).reduce((s, p) => s + p[1], 0) / n]; } return [cx / (6 * A), cy / (6 * A)]; }
 function rayHit(P, u, ringLL) { const r = ringLL.map(toXY); if (r[0][0] !== r.at(-1)[0] || r[0][1] !== r.at(-1)[1]) r.push(r[0]); let bestT = Infinity, hit = null; for (let i = 0; i < r.length - 1; i++) { const A = r[i], B = r[i + 1]; const ex = B[0] - A[0], ey = B[1] - A[1]; const det = ex * u[1] - ey * u[0]; if (Math.abs(det) < 1e-18) continue; const dx = A[0] - P[0], dy = A[1] - P[1]; const t = (ex * dy - ey * dx) / det, s = (u[0] * dy - u[1] * dx) / det; if (t > 1e-12 && s >= -1e-9 && s <= 1 + 1e-9 && t < bestT) { bestT = t; hit = [P[0] + t * u[0], P[1] + t * u[1]]; } } return hit; }
 const avg = pts => [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
+// OSM ways → Polygon (ring in coordinates[0]); OSM nodes → Point (no ring). ringOf returns
+// null for points so callers can skip ray-casting; centroidOf falls back to the point itself.
+const ringOf = f => f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : null;
+const centroidOf = f => { const ring = ringOf(f); return ring ? centroidXY(ring) : toXY(f.geometry.coordinates); };
 const MC = { tee_center: '#c8a055', green_front: '#5aae5a', green_center: '#5aae5a', green_back: '#5aae5a' };
 const mk = (t, ll, src, name) => ({ type: 'Feature', bbox: [ll[0], ll[1], ll[0], ll[1]], geometry: { type: 'Point', coordinates: ll }, properties: { course_id: src.course_id, course_name: src.course_name, hole_number: src.hole_number, feature_type: t, name, 'feature-color': MC[t], is_approximate: true, source: 'derived', '@id': uuid() } });
 
@@ -139,20 +143,20 @@ for (const f of assigned) { const h = f.properties.hole_number; if (!byHole.has(
 const markers = [];
 for (const [hole, g] of byHole) {
   let ref = null;
-  if (g.fairway?.length) ref = avg(g.fairway.map(f => centroidXY(f.geometry.coordinates[0])));
-  else if (g.tee_box?.length) ref = avg(g.tee_box.map(f => centroidXY(f.geometry.coordinates[0])));
+  if (g.fairway?.length) ref = avg(g.fairway.map(centroidOf));
+  else if (g.tee_box?.length) ref = avg(g.tee_box.map(centroidOf));
   let teeBoxes = g.tee_box || [];
   if (teeBoxes.length > 1) {
-    const anchor = g.green?.length ? centroidXY(g.green[0].geometry.coordinates[0]) : ref;
-    if (anchor) teeBoxes = [teeBoxes.reduce((best, f) => { const c = centroidXY(f.geometry.coordinates[0]); const d = (c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2; return d > best.d ? { f, d } : best; }, { f: teeBoxes[0], d: -1 }).f];
+    const anchor = g.green?.length ? centroidOf(g.green[0]) : ref;
+    if (anchor) teeBoxes = [teeBoxes.reduce((best, f) => { const c = centroidOf(f); const d = (c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2; return d > best.d ? { f, d } : best; }, { f: teeBoxes[0], d: -1 }).f];
     else teeBoxes = [teeBoxes[0]];
   }
-  for (const f of teeBoxes) markers.push(mk('tee_center', toLL(centroidXY(f.geometry.coordinates[0])), f.properties, `hole_${hole}_tee_center`));
+  for (const f of teeBoxes) markers.push(mk('tee_center', toLL(centroidOf(f)), f.properties, `hole_${hole}_tee_center`));
   let gi = 0;
   for (const f of g.green || []) {
-    gi++; const ring = f.geometry.coordinates[0]; const c = centroidXY(ring); const sfx = gi === 1 ? '' : `_${gi}`;
+    gi++; const ring = ringOf(f); const c = ring ? centroidXY(ring) : toXY(f.geometry.coordinates); const sfx = gi === 1 ? '' : `_${gi}`;
     let front = c, back = c;
-    if (ref) { const dx = c[0] - ref[0], dy = c[1] - ref[1], L = Math.hypot(dx, dy); if (L > 0) { const u = [dx / L, dy / L]; front = rayHit(c, [-u[0], -u[1]], ring) || c; back = rayHit(c, [u[0], u[1]], ring) || c; } }
+    if (ref && ring) { const dx = c[0] - ref[0], dy = c[1] - ref[1], L = Math.hypot(dx, dy); if (L > 0) { const u = [dx / L, dy / L]; front = rayHit(c, [-u[0], -u[1]], ring) || c; back = rayHit(c, [u[0], u[1]], ring) || c; } }
     markers.push(mk('green_center', toLL(c), f.properties, `hole_${hole}_green_center${sfx}`));
     markers.push(mk('green_front', toLL(front), f.properties, `hole_${hole}_green_front${sfx}`));
     markers.push(mk('green_back', toLL(back), f.properties, `hole_${hole}_green_back${sfx}`));

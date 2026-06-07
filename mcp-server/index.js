@@ -395,6 +395,12 @@ out body geom;`;
         return [cx / (6 * A), cy / (6 * A)];
       }
 
+      // OSM ways → Polygon (ring in coordinates[0]); OSM nodes → Point (no ring). ringOf
+      // returns null for points so green markers skip ray-casting; centroidOf falls back to
+      // the point itself. Mirrors scripts/import-course.mjs.
+      const ringOf = f => f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : null;
+      const centroidOf = f => { const ring = ringOf(f); return ring ? centroid(ring) : toXY(f.geometry.coordinates); };
+
       // Cast a ray from P along unit vector u; return nearest boundary crossing (in XY).
       function rayHit(P, u, ringLL) {
         const r = ringLL.map(toXY);
@@ -449,17 +455,17 @@ out body geom;`;
 
       for (const [hole, g] of byHole) {
         let ref = null;
-        if (g.fairway?.length) ref = avg(g.fairway.map(f => centroid(f.geometry.coordinates[0])));
-        else if (g.tee_box?.length) ref = avg(g.tee_box.map(f => centroid(f.geometry.coordinates[0])));
+        if (g.fairway?.length) ref = avg(g.fairway.map(centroidOf));
+        else if (g.tee_box?.length) ref = avg(g.tee_box.map(centroidOf));
 
         let teeBoxes = g.tee_box || [];
         if (teeMode === 'one_per_hole' && teeBoxes.length > 1) {
           // Pick the back tee: the tee_box centroid farthest from the green
           // (or the line-of-play reference if the hole has no green).
-          const anchor = g.green?.length ? centroid(g.green[0].geometry.coordinates[0]) : ref;
+          const anchor = g.green?.length ? centroidOf(g.green[0]) : ref;
           if (anchor) {
             teeBoxes = [teeBoxes.reduce((best, f) => {
-              const c = centroid(f.geometry.coordinates[0]);
+              const c = centroidOf(f);
               const d = (c[0] - anchor[0]) ** 2 + (c[1] - anchor[1]) ** 2;
               return d > best.d ? { f, d } : best;
             }, { f: teeBoxes[0], d: -1 }).f];
@@ -469,15 +475,15 @@ out body geom;`;
         }
         for (const f of teeBoxes) {
           const n = tally(`${hole}_tee_center`);
-          markers.push(mk('tee_center', toLL(centroid(f.geometry.coordinates[0])), f.properties, `hole_${hole}_tee_center${suffix(n)}`));
+          markers.push(mk('tee_center', toLL(centroidOf(f)), f.properties, `hole_${hole}_tee_center${suffix(n)}`));
         }
 
         for (const f of g.green || []) {
-          const ring = f.geometry.coordinates[0];
-          const c = centroid(ring);
+          const ring = ringOf(f);
+          const c = ring ? centroid(ring) : toXY(f.geometry.coordinates);
           const n = tally(`${hole}_green`);
           let front = c, back = c;
-          if (ref) {
+          if (ref && ring) {
             const dx = c[0] - ref[0], dy = c[1] - ref[1];
             const L = Math.hypot(dx, dy);
             if (L > 0) {
