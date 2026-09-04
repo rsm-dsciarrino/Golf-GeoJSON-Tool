@@ -1,0 +1,26 @@
+{
+  "course_id": "carlton_oaks_santee",
+  "course_name": "Carlton Oaks Golf Course",
+  "tee": "Black (championship)",
+  "source": "greenskeeper.org — 18 holes, par 72, 7304 yds (Black); total cross-checked against carltonoaksgolf.com course statistics",
+  "holes": {
+    "1":  { "par": 4, "handicap": 7,  "yardage": 445 },
+    "2":  { "par": 3, "handicap": 11, "yardage": 181 },
+    "3":  { "par": 5, "handicap": 15, "yardage": 558 },
+    "4":  { "par": 4, "handicap": 1,  "yardage": 510 },
+    "5":  { "par": 4, "handicap": 17, "yardage": 312 },
+    "6":  { "par": 4, "handicap": 5,  "yardage": 435 },
+    "7":  { "par": 3, "handicap": 9,  "yardage": 211 },
+    "8":  { "par": 4, "handicap": 3,  "yardage": 403 },
+    "9":  { "par": 5, "handicap": 13, "yardage": 543 },
+    "10": { "par": 4, "handicap": 6,  "yardage": 483 },
+    "11": { "par": 4, "handicap": 12, "yardage": 409 },
+    "12": { "par": 3, "handicap": 8,  "yardage": 199 },
+    "13": { "par": 5, "handicap": 10, "yardage": 611 },
+    "14": { "par": 4, "handicap": 2,  "yardage": 472 },
+    "15": { "par": 5, "handicap": 14, "yardage": 577 },
+    "16": { "par": 4, "handicap": 18, "yardage": 368 },
+    "17": { "par": 3, "handicap": 16, "yardage": 148 },
+    "18": { "par": 4, "handicap": 4,  "yardage": 439 }
+  }
+}

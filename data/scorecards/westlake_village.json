@@ -1,0 +1,26 @@
+{
+  "course_id": "westlake_village",
+  "course_name": "Westlake Golf Course",
+  "tee": "Blue (back)",
+  "source": "Official scorecard image from westlakegc.com (westlakegc.wpenginepowered.com/wp-content/uploads/2021/05/scorecard2021.png) — 18 holes, par 66, 4791 yds (Blue); cross-checked exact match against greenskeeper.org",
+  "holes": {
+    "1":  { "par": 4, "handicap": 15, "yardage": 293 },
+    "2":  { "par": 3, "handicap": 13, "yardage": 171 },
+    "3":  { "par": 4, "handicap": 1,  "yardage": 410 },
+    "4":  { "par": 4, "handicap": 11, "yardage": 304 },
+    "5":  { "par": 4, "handicap": 17, "yardage": 271 },
+    "6":  { "par": 4, "handicap": 9,  "yardage": 337 },
+    "7":  { "par": 3, "handicap": 3,  "yardage": 170 },
+    "8":  { "par": 3, "handicap": 7,  "yardage": 159 },
+    "9":  { "par": 4, "handicap": 5,  "yardage": 319 },
+    "10": { "par": 4, "handicap": 10, "yardage": 320 },
+    "11": { "par": 4, "handicap": 2,  "yardage": 406 },
+    "12": { "par": 4, "handicap": 8,  "yardage": 313 },
+    "13": { "par": 3, "handicap": 4,  "yardage": 174 },
+    "14": { "par": 3, "handicap": 12, "yardage": 155 },
+    "15": { "par": 5, "handicap": 16, "yardage": 450 },
+    "16": { "par": 3, "handicap": 6,  "yardage": 164 },
+    "17": { "par": 3, "handicap": 14, "yardage": 125 },
+    "18": { "par": 4, "handicap": 18, "yardage": 250 }
+  }
+}

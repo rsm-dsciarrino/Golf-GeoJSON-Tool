@@ -1,0 +1,26 @@
+{
+  "course_id": "lakehouse_san_marcos",
+  "course_name": "The Links at Lakehouse",
+  "tee": "Blue (championship)",
+  "source": "greenskeeper.org (listed as The Links at Lakehouse, formerly St. Mark / Lake San Marcos North) — 18 holes, par 71, 6398 yds (Blue); total cross-checked against resort's ~6,400 yd description",
+  "holes": {
+    "1":  { "par": 4, "handicap": 8,  "yardage": 310 },
+    "2":  { "par": 4, "handicap": 6,  "yardage": 394 },
+    "3":  { "par": 3, "handicap": 16, "yardage": 208 },
+    "4":  { "par": 4, "handicap": 2,  "yardage": 447 },
+    "5":  { "par": 4, "handicap": 14, "yardage": 343 },
+    "6":  { "par": 3, "handicap": 18, "yardage": 163 },
+    "7":  { "par": 5, "handicap": 4,  "yardage": 487 },
+    "8":  { "par": 4, "handicap": 12, "yardage": 359 },
+    "9":  { "par": 4, "handicap": 10, "yardage": 343 },
+    "10": { "par": 4, "handicap": 3,  "yardage": 460 },
+    "11": { "par": 3, "handicap": 17, "yardage": 174 },
+    "12": { "par": 5, "handicap": 1,  "yardage": 606 },
+    "13": { "par": 3, "handicap": 15, "yardage": 167 },
+    "14": { "par": 4, "handicap": 11, "yardage": 369 },
+    "15": { "par": 5, "handicap": 9,  "yardage": 466 },
+    "16": { "par": 4, "handicap": 7,  "yardage": 412 },
+    "17": { "par": 3, "handicap": 13, "yardage": 210 },
+    "18": { "par": 5, "handicap": 5,  "yardage": 480 }
+  }
+}
