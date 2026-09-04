@@ -1,0 +1,26 @@
+{
+  "course_id": "aurora_country_club_il",
+  "course_name": "Aurora Country Club",
+  "tee": "Gold (back)",
+  "source": "Gold-tee card (par 72, 6667 yds, 73.4/140) — par + yardage confirmed hole-by-hole on golflink.com/golf-courses/il/aurora/aurora-country-club; handicaps from the same published card (front nine odd 1-17, back nine even 2-18). Cross-checked against imported OSM geometry: tee_center→green_center distances track the card within dogleg tolerance, and the four par 3s (4, 6, 14, 17) and four par 5s (2, 7, 16, 18) match the shortest/longest measured holes.",
+  "holes": {
+    "1":  { "par": 4, "handicap": 15, "yardage": 382 },
+    "2":  { "par": 5, "handicap": 5,  "yardage": 536 },
+    "3":  { "par": 4, "handicap": 7,  "yardage": 355 },
+    "4":  { "par": 3, "handicap": 13, "yardage": 210 },
+    "5":  { "par": 4, "handicap": 9,  "yardage": 334 },
+    "6":  { "par": 3, "handicap": 17, "yardage": 158 },
+    "7":  { "par": 5, "handicap": 3,  "yardage": 496 },
+    "8":  { "par": 4, "handicap": 11, "yardage": 355 },
+    "9":  { "par": 4, "handicap": 1,  "yardage": 445 },
+    "10": { "par": 4, "handicap": 8,  "yardage": 436 },
+    "11": { "par": 4, "handicap": 6,  "yardage": 399 },
+    "12": { "par": 4, "handicap": 4,  "yardage": 402 },
+    "13": { "par": 4, "handicap": 16, "yardage": 358 },
+    "14": { "par": 3, "handicap": 18, "yardage": 193 },
+    "15": { "par": 4, "handicap": 10, "yardage": 387 },
+    "16": { "par": 5, "handicap": 2,  "yardage": 525 },
+    "17": { "par": 3, "handicap": 14, "yardage": 218 },
+    "18": { "par": 5, "handicap": 12, "yardage": 478 }
+  }
+}
