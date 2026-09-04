@@ -1,0 +1,26 @@
+{
+  "course_id": "callippe_preserve_pleasanton",
+  "course_name": "Callippe Preserve Golf Course",
+  "tee": "Black (back)",
+  "source": "Black-tee card (par 72, 6748 yds, 73.3/139) — par + Black yardage agree hole-for-hole between golflink.com/golf-courses/ca/pleasanton/callippe-preserve-golf-course and greenskeeper.org/northern_california/oakland_east_bay_area/callippe_prserve_golf_club_pleasanton_california/scorecard.cfm; handicaps from the greenskeeper card (front nine odd 1-17, back nine even 2-18). Cross-checked against imported OSM geometry: tee_center→green_center distances track the card within dogleg tolerance, and the four par 3s (4, 6, 13, 16) and four par 5s (3, 9, 15, 18) match the shortest/longest measured holes.",
+  "holes": {
+    "1":  { "par": 4, "handicap": 5,  "yardage": 433 },
+    "2":  { "par": 4, "handicap": 11, "yardage": 372 },
+    "3":  { "par": 5, "handicap": 7,  "yardage": 550 },
+    "4":  { "par": 3, "handicap": 13, "yardage": 201 },
+    "5":  { "par": 4, "handicap": 9,  "yardage": 371 },
+    "6":  { "par": 3, "handicap": 17, "yardage": 142 },
+    "7":  { "par": 4, "handicap": 1,  "yardage": 423 },
+    "8":  { "par": 4, "handicap": 15, "yardage": 326 },
+    "9":  { "par": 5, "handicap": 3,  "yardage": 568 },
+    "10": { "par": 4, "handicap": 4,  "yardage": 446 },
+    "11": { "par": 4, "handicap": 10, "yardage": 348 },
+    "12": { "par": 4, "handicap": 16, "yardage": 322 },
+    "13": { "par": 3, "handicap": 18, "yardage": 163 },
+    "14": { "par": 4, "handicap": 8,  "yardage": 346 },
+    "15": { "par": 5, "handicap": 12, "yardage": 505 },
+    "16": { "par": 3, "handicap": 14, "yardage": 212 },
+    "17": { "par": 4, "handicap": 2,  "yardage": 447 },
+    "18": { "par": 5, "handicap": 6,  "yardage": 573 }
+  }
+}
