@@ -1,0 +1,26 @@
+{
+  "course_id": "boundary_oak_walnut_creek",
+  "course_name": "Boundary Oak Golf Course",
+  "tee": "Black (back)",
+  "source": "Black-tee card (par 72, 7100 yds, 73.8/134) — par, men's handicap and Black yardage agree hole-for-hole between greenskeeper.org/northern_california/oakland_east_bay_area/Boundary_Oak_Golf_Course/scorecard.cfm and golflink.com/golf-courses/ca/walnut-creek/boundary-oak-golf-course. Handicaps run even 2-18 on the front nine and odd 1-17 on the back (verified as a complete 1-18 set); front/back/total yardages check to 3445/3655/7100. Cross-checked against imported OSM geometry: the four shortest measured tee_center→green_center holes (2, 6, 17, 12) are exactly the four card par 3s, and every hole measures shorter than the card as expected for straight-line vs. line-of-play. Largest gaps are holes 11 and 4 (OSM is missing their back tees) and the 18/5/3 doglegs. golflink's page header shows a stale 7063 yds / 132 slope that its own hole rows contradict.",
+  "holes": {
+    "1":  { "par": 4, "handicap": 6,  "yardage": 424 },
+    "2":  { "par": 3, "handicap": 18, "yardage": 181 },
+    "3":  { "par": 5, "handicap": 8,  "yardage": 565 },
+    "4":  { "par": 4, "handicap": 2,  "yardage": 413 },
+    "5":  { "par": 5, "handicap": 12, "yardage": 520 },
+    "6":  { "par": 3, "handicap": 16, "yardage": 202 },
+    "7":  { "par": 4, "handicap": 10, "yardage": 366 },
+    "8":  { "par": 4, "handicap": 14, "yardage": 357 },
+    "9":  { "par": 4, "handicap": 4,  "yardage": 417 },
+    "10": { "par": 4, "handicap": 13, "yardage": 381 },
+    "11": { "par": 4, "handicap": 11, "yardage": 437 },
+    "12": { "par": 3, "handicap": 17, "yardage": 212 },
+    "13": { "par": 4, "handicap": 9,  "yardage": 436 },
+    "14": { "par": 5, "handicap": 1,  "yardage": 578 },
+    "15": { "par": 4, "handicap": 3,  "yardage": 439 },
+    "16": { "par": 4, "handicap": 7,  "yardage": 423 },
+    "17": { "par": 3, "handicap": 15, "yardage": 220 },
+    "18": { "par": 5, "handicap": 5,  "yardage": 529 }
+  }
+}
