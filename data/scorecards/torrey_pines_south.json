@@ -1,0 +1,25 @@
+{
+  "course_id": "torrey_pines_south",
+  "course_name": "Torrey Pines South",
+  "tee": "Black (championship)",
+  "source": "Official City of San Diego scorecard PDF (sandiego.gov/sites/default/files/torrey_pines_south_1.20.pdf, rev 1/2020) — par row, Men's handicap row and Black tee yardages all read directly from the card. Black = 3803 out / 3999 in / 7802 total, par 36/36/72, rating 78.8 slope 148. Independently matched hole-for-hole by golftraxx.com. Note: greenskeeper.org lists hole 7 as handicap 7 (duplicating hole 9, omitting 1) and its OUT/IN totals are wrong — not used.",
+  "holes": {
+    "1": { "par": 4, "handicap": 5, "yardage": 451 },
+    "2": { "par": 4, "handicap": 15, "yardage": 389 },
+    "3": { "par": 3, "handicap": 13, "yardage": 201 },
+    "4": { "par": 4, "handicap": 3, "yardage": 490 },
+    "5": { "par": 4, "handicap": 11, "yardage": 454 },
+    "6": { "par": 5, "handicap": 9, "yardage": 564 },
+    "7": { "par": 4, "handicap": 1, "yardage": 462 },
+    "8": { "par": 3, "handicap": 17, "yardage": 177 },
+    "9": { "par": 5, "handicap": 7, "yardage": 615 },
+    "10": { "par": 4, "handicap": 16, "yardage": 454 },
+    "11": { "par": 3, "handicap": 14, "yardage": 225 },
+    "12": { "par": 4, "handicap": 2, "yardage": 505 },
+    "13": { "par": 5, "handicap": 6, "yardage": 621 },
+    "14": { "par": 4, "handicap": 8, "yardage": 437 },
+    "15": { "par": 4, "handicap": 12, "yardage": 517 },
+    "16": { "par": 3, "handicap": 18, "yardage": 227 },
+    "17": { "par": 4, "handicap": 4, "yardage": 443 },
+    "18": { "par": 5, "handicap": 10, "yardage": 570 } }
+}
