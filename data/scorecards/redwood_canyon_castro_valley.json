@@ -1,0 +1,26 @@
+{
+  "course_id": "redwood_canyon_castro_valley",
+  "course_name": "Redwood Canyon Golf Course",
+  "tee": "Blue (back)",
+  "source": "Blue-tee card (par 71, 5801 yds, 68.2/118). Par and Blue yardage agree hole-for-hole between greenskeeper.org/northern_california/oakland_east_bay_area/Willow_Park_Golf_Course/scorecard.cfm (the course's former name, Willow Park GC) and mscorecard.com/mscorecard/showcourse.php?cid=1563379632945341, with one exception: hole 10 Blue reads 356 on greenskeeper and 386 on mscorecard — 386 is correct because only it reconciles with the back-nine Blue total of 2910 that both sources print (356 gives 2880). Men's handicaps are from greenskeeper (mscorecard prints no SI); verified a complete 1-18 set, running odd 1-17 on the front nine and even 2-18 on the back. Yardages check to 2891/2910/5801 and par to 35/36/71. Cross-checked against imported OSM geometry: the five shortest measured tee_center-to-green_center holes (3, 13, 5, 7, 16) are exactly the five card par 3s, confirming the hole numbering. Nearly every hole measures shorter than the card, as expected for straight-line vs. line of play; largest gaps are the doglegs on 9 (-83) and 15 (-64). The only holes measuring longer than the card are 6 (+25), 17 (+12) and 14 (+2), which are three of the four holes where OSM maps two tee boxes — the importer takes the back-most, which sits behind the Blue marker.",
+  "holes": {
+    "1":  { "par": 4, "handicap": 1,  "yardage": 411 },
+    "2":  { "par": 4, "handicap": 7,  "yardage": 366 },
+    "3":  { "par": 3, "handicap": 13, "yardage": 133 },
+    "4":  { "par": 5, "handicap": 3,  "yardage": 469 },
+    "5":  { "par": 3, "handicap": 11, "yardage": 149 },
+    "6":  { "par": 4, "handicap": 15, "yardage": 328 },
+    "7":  { "par": 3, "handicap": 9,  "yardage": 161 },
+    "8":  { "par": 4, "handicap": 17, "yardage": 310 },
+    "9":  { "par": 5, "handicap": 5,  "yardage": 564 },
+    "10": { "par": 4, "handicap": 2,  "yardage": 386 },
+    "11": { "par": 4, "handicap": 18, "yardage": 264 },
+    "12": { "par": 5, "handicap": 8,  "yardage": 475 },
+    "13": { "par": 3, "handicap": 16, "yardage": 131 },
+    "14": { "par": 4, "handicap": 12, "yardage": 296 },
+    "15": { "par": 4, "handicap": 4,  "yardage": 375 },
+    "16": { "par": 3, "handicap": 6,  "yardage": 166 },
+    "17": { "par": 4, "handicap": 10, "yardage": 346 },
+    "18": { "par": 5, "handicap": 14, "yardage": 471 }
+  }
+}
