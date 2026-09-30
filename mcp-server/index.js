@@ -219,6 +219,7 @@ way[leisure=golf_course][name~"${escaped}",i](around:${radius_m},${lat},${lng})-
 map_to_area(.course)->.area;
 (
   way[golf](area.area);
+  rel[golf](area.area);
   node[golf](area.area);
 );
 out body geom;`;
@@ -226,6 +227,7 @@ out body geom;`;
         query = `[out:json][timeout:30];
 (
   way[golf](around:${radius_m},${lat},${lng});
+  rel[golf](around:${radius_m},${lat},${lng});
   node[golf](around:${radius_m},${lat},${lng});
 );
 out body geom;`;
@@ -241,7 +243,7 @@ out body geom;`;
       // If area query returned nothing (course boundary not found), fall back to radius
       let elements = overpassData.elements || [];
       if (course_name && elements.length === 0) {
-        const fallback = `[out:json][timeout:30];(way[golf](around:${radius_m},${lat},${lng});node[golf](around:${radius_m},${lat},${lng}););out body geom;`;
+        const fallback = `[out:json][timeout:30];(way[golf](around:${radius_m},${lat},${lng});rel[golf](around:${radius_m},${lat},${lng});node[golf](around:${radius_m},${lat},${lng}););out body geom;`;
         const fbRes = await fetch('https://overpass-api.de/api/interpreter', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -277,6 +279,54 @@ out body geom;`;
         return [minLon, minLat, maxLon, maxLat];
       }
 
+      // ---- multipolygon relations (golf=* on a type=multipolygon relation) ----
+      // `out geom` returns each member way's points; one ring can be split across several
+      // member fragments, so join them end-to-end before closing. One Polygon per outer ring
+      // (with the inner rings it contains) keeps coordinates[0] the outer ring, matching the
+      // way/node paths. Mirrors relationPolygons() in scripts/import-course.mjs.
+      function osmStitchRings(memberGeoms) {
+        const frags = memberGeoms.map(g => g.map(pt => [pt.lon, pt.lat])).filter(f => f.length > 1);
+        const isClosed = r => r[0][0] === r[r.length - 1][0] && r[0][1] === r[r.length - 1][1];
+        const rings = [];
+        while (frags.length) {
+          let ring = frags.pop(), joined = true;
+          while (joined && !isClosed(ring)) {
+            joined = false;
+            for (let i = 0; i < frags.length; i++) {
+              const f = frags[i], end = ring[ring.length - 1];
+              if (f[0][0] === end[0] && f[0][1] === end[1]) { ring = ring.concat(f.slice(1)); frags.splice(i, 1); joined = true; break; }
+              if (f[f.length - 1][0] === end[0] && f[f.length - 1][1] === end[1]) { ring = ring.concat(f.slice(0, -1).reverse()); frags.splice(i, 1); joined = true; break; }
+            }
+          }
+          if (!isClosed(ring)) ring.push([...ring[0]]);
+          if (ring.length >= 4) rings.push(ring);
+        }
+        return rings;
+      }
+      // Orders outer rings by size. Uses the same local equirectangular scaling as
+      // scripts/import-course.mjs so both pick the same ring when areas are near-equal.
+      const osmRingArea = (r) => {
+        const mx = 111320 * Math.cos(lat * Math.PI / 180), my = 110540;
+        let a = 0;
+        for (let i = 0; i < r.length - 1; i++) a += (r[i][0] * mx) * (r[i + 1][1] * my) - (r[i + 1][0] * mx) * (r[i][1] * my);
+        return Math.abs(a / 2);
+      };
+      function osmPointInRing(pt, r) {
+        let inside = false;
+        for (let i = 0, j = r.length - 2; i < r.length - 1; j = i++) {
+          const [xi, yi] = r[i], [xj, yj] = r[j];
+          if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+      }
+      function relationPolygons(el) {
+        const mem = (el.members || []).filter(m => m.type === 'way' && m.geometry?.length);
+        const outers = osmStitchRings(mem.filter(m => m.role !== 'inner').map(m => m.geometry));
+        const inners = osmStitchRings(mem.filter(m => m.role === 'inner').map(m => m.geometry));
+        return outers.sort((a, b) => osmRingArea(b) - osmRingArea(a))
+          .map(o => ({ type: 'Polygon', coordinates: [o, ...inners.filter(i => osmPointInRing(i[0], o))] }));
+      }
+
       const newFeatures = [];
       const nameCounts = {};
 
@@ -291,18 +341,21 @@ out body geom;`;
         // Filter to requested hole if specified
         if (hole_number != null && elHole !== hole_number) continue;
 
-        let geometry;
+        let geoms;
         if (el.type === 'way' && el.geometry?.length) {
           const coords = el.geometry.map(pt => [pt.lon, pt.lat]);
           const first = coords[0], last = coords[coords.length - 1];
           const closed = first[0] === last[0] && first[1] === last[1];
-          geometry = { type: 'Polygon', coordinates: [closed ? coords : [...coords, first]] };
+          geoms = [{ type: 'Polygon', coordinates: [closed ? coords : [...coords, first]] }];
+        } else if (el.type === 'relation') {
+          geoms = relationPolygons(el);
         } else if (el.type === 'node' && el.lat != null) {
-          geometry = { type: 'Point', coordinates: [el.lon, el.lat] };
+          geoms = [{ type: 'Point', coordinates: [el.lon, el.lat] }];
         } else {
           continue;
         }
 
+        for (const geometry of geoms) {
         const holeStr = elHole != null ? `hole_${elHole}` : 'course';
         const baseName = `${holeStr}_${featureType}`;
         nameCounts[baseName] = (nameCounts[baseName] || 0) + 1;
@@ -321,6 +374,7 @@ out body geom;`;
             is_approximate: true, source: 'osm', '@id': osmUuid(), osm_id: el.id,
           },
         });
+        }
       }
 
       if (!newFeatures.length) {
