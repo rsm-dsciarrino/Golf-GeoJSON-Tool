@@ -59,11 +59,11 @@ async function overpass(q) {
 // precisely (no bleeding into adjacent courses); radius is the fallback for nodes/failures.
 let elements = [];
 if (hit.osm_type === 'way' || hit.osm_type === 'relation') {
-  elements = await overpass(`[out:json][timeout:60];${hit.osm_type}(${hit.osm_id});map_to_area->.a;(way[golf](area.a);node[golf](area.a););out body geom;`);
+  elements = await overpass(`[out:json][timeout:60];${hit.osm_type}(${hit.osm_id});map_to_area->.a;(way[golf](area.a);rel[golf](area.a);node[golf](area.a););out body geom;`);
 }
 if (!elements.length) {
   console.log('Area query empty — falling back to radius query.');
-  elements = await overpass(`[out:json][timeout:60];(way[golf](around:${RADIUS},${lat},${lng});node[golf](around:${RADIUS},${lat},${lng}););out body geom;`);
+  elements = await overpass(`[out:json][timeout:60];(way[golf](around:${RADIUS},${lat},${lng});rel[golf](around:${RADIUS},${lat},${lng});node[golf](around:${RADIUS},${lat},${lng}););out body geom;`);
 }
 if (!elements.length) { console.error('No golf features found.'); process.exit(1); }
 
@@ -86,6 +86,41 @@ const holeLines = elements
   .filter(e => e.tags?.golf === 'hole' && /^\d+$/.test(e.tags.ref || ''))
   .map(e => ({ ref: parseInt(e.tags.ref), ln: e.geometry.map(p => [p.lon, p.lat]) }));
 
+// ---- multipolygon relations (golf=* on a type=multipolygon relation) ----
+// `out geom` returns each member way's points; a single ring can be split across several
+// member fragments, so join them end-to-end before closing. Emitting one Polygon per outer
+// ring (with the inner rings it contains) keeps coordinates[0] the outer ring for every
+// consumer below, which is what the way/node paths already guarantee.
+function stitchRings(memberGeoms) {
+  const frags = memberGeoms.map(g => g.map(p => [p.lon, p.lat])).filter(f => f.length > 1);
+  const closed = r => r[0][0] === r.at(-1)[0] && r[0][1] === r.at(-1)[1];
+  const rings = [];
+  while (frags.length) {
+    let ring = frags.pop(), joined = true;
+    while (joined && !closed(ring)) {
+      joined = false;
+      for (let i = 0; i < frags.length; i++) {
+        const f = frags[i], end = ring.at(-1);
+        if (f[0][0] === end[0] && f[0][1] === end[1]) { ring = ring.concat(f.slice(1)); frags.splice(i, 1); joined = true; break; }
+        if (f.at(-1)[0] === end[0] && f.at(-1)[1] === end[1]) { ring = ring.concat(f.slice(0, -1).reverse()); frags.splice(i, 1); joined = true; break; }
+      }
+    }
+    if (!closed(ring)) ring.push([...ring[0]]);
+    if (ring.length >= 4) rings.push(ring);
+  }
+  return rings;
+}
+const ringArea = r => { let a = 0; for (let i = 0; i < r.length - 1; i++) a += (r[i][0] * MX) * (r[i + 1][1] * MY) - (r[i + 1][0] * MX) * (r[i][1] * MY); return Math.abs(a / 2); };
+function pointInRing(pt, r) { let inside = false; for (let i = 0, j = r.length - 2; i < r.length - 1; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) inside = !inside; } return inside; }
+function relationPolygons(el) {
+  const mem = (el.members || []).filter(m => m.type === 'way' && m.geometry?.length);
+  const outers = stitchRings(mem.filter(m => m.role !== 'inner').map(m => m.geometry));
+  const inners = stitchRings(mem.filter(m => m.role === 'inner').map(m => m.geometry));
+  return outers.sort((a, b) => ringArea(b) - ringArea(a))
+    .map(o => ({ type: 'Polygon', coordinates: [o, ...inners.filter(i => pointInRing(i[0], o))] }));
+}
+const ringCentroidLL = r => { const p = r.slice(0, -1); return [p.reduce((s, q) => s + q[0], 0) / p.length, p.reduce((s, q) => s + q[1], 0) / p.length]; };
+
 const OSM_TYPE_MAP = {
   fairway: 'fairway', green: 'green', tee: 'tee_box', bunker: 'bunker',
   water_hazard: 'water', lateral_water_hazard: 'water', pond: 'water',
@@ -101,15 +136,18 @@ const nameCounts = {};
 for (const el of elements) {
   const ft = OSM_TYPE_MAP[el.tags?.golf];
   if (!ft) continue;
-  let geometry;
+  let geoms;
   if (el.type === 'way' && el.geometry?.length) {
     const coords = el.geometry.map(p => [p.lon, p.lat]);
     const f = coords[0], l = coords[coords.length - 1];
-    geometry = { type: 'Polygon', coordinates: [(f[0] === l[0] && f[1] === l[1]) ? coords : [...coords, f]] };
+    geoms = [{ type: 'Polygon', coordinates: [(f[0] === l[0] && f[1] === l[1]) ? coords : [...coords, f]] }];
+  } else if (el.type === 'relation') {
+    geoms = relationPolygons(el);
   } else if (el.type === 'node' && el.lat != null) {
-    geometry = { type: 'Point', coordinates: [el.lon, el.lat] };
+    geoms = [{ type: 'Point', coordinates: [el.lon, el.lat] }];
   } else continue;
-  const c = centroidLL(el);
+  for (const geometry of geoms) {
+  const c = el.type === 'relation' ? ringCentroidLL(geometry.coordinates[0]) : centroidLL(el);
   const best = holeLines.map(h => ({ ref: h.ref, d: dline(c, h.ln) })).sort((a, b) => a.d - b.d)[0];
   const hole = best && best.d <= CAP_M ? best.ref : null;
   const holeStr = hole != null ? `hole_${hole}` : 'unassigned';
@@ -120,6 +158,7 @@ for (const el of elements) {
   const props = { course_id: courseId, course_name: courseName, hole_number: hole, feature_type: ft, name, 'feature-color': TYPE_COLORS[ft], is_approximate: true, source: 'osm', '@id': uuid(), osm_id: el.id };
   if (hole == null) props.needs_hole_assignment = true;
   features.push({ type: 'Feature', bbox: bbox(pts), geometry, properties: props });
+  }
 }
 
 // ---- derive tee_center (back tee) + green_front/center/back ----

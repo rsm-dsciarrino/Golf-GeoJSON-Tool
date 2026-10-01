@@ -1,0 +1,26 @@
+{
+  "course_id": "el_cariso_sylmar",
+  "course_name": "El Cariso Golf Course",
+  "tee": "Blue (back)",
+  "source": "Blue-tee card for this 18-hole par-62 executive course (Robert Muir Graves, 1977), 4493 yds, 61.1/98. Par, men's handicap and Blue yardage agree hole-for-hole between greenskeeper.org/southern_california/los_angeles/el_cariso_golf_course/scorecard.cfm and offcourse.co/courses/scorecard/el-cariso-golf-course; yardages check to 2290/2203/4493 and par to 31/31/62. Handicap for hole 12 is 6, taken from offcourse.co: greenskeeper prints 12 for both hole 12 and hole 16, leaving 6 unused, and offcourse.co's 6/12 split makes the back nine a complete even 2-18 set while matching greenskeeper on all sixteen other handicaps. TWO RIVAL YARDAGE SETS EXIST — mscorecard.com/mscorecard/showcourse.php?cid=1314665801604, golflink.com/golf-courses/ca/sylmar/el-cariso-golf-course and golfpass.com's hole rows all print a longer set summing to 2319/2285/4604 (e.g. hole 5 at 408 and hole 18 at 408). That set is rejected: playelcariso.com states 'Par: 62 | Yardage: 4,493', and every published tee-set table, golfpass's own included, rates Blue at 4493/61.1/98 — golfpass contradicts itself between its tee table and its hole rows, and no rating anywhere supports 4604. Cross-checked against imported OSM geometry, which independently tags par on all 18 golf=hole lines: those OSM pars match this card hole-for-hole (31/31/62). Measured tee_center-to-green_center is shorter than the card on 17 of 18 holes as expected for straight-line vs. line of play (total 4136 vs 4493); the lone exception is hole 10 (+22), one of three holes where OSM maps multiple tee boxes and the importer takes the back-most, which sits behind the Blue marker.",
+  "holes": {
+    "1":  { "par": 4, "handicap": 7,  "yardage": 353 },
+    "2":  { "par": 4, "handicap": 3,  "yardage": 347 },
+    "3":  { "par": 3, "handicap": 13, "yardage": 161 },
+    "4":  { "par": 3, "handicap": 11, "yardage": 196 },
+    "5":  { "par": 4, "handicap": 1,  "yardage": 389 },
+    "6":  { "par": 3, "handicap": 15, "yardage": 127 },
+    "7":  { "par": 4, "handicap": 5,  "yardage": 345 },
+    "8":  { "par": 3, "handicap": 17, "yardage": 139 },
+    "9":  { "par": 3, "handicap": 9,  "yardage": 233 },
+    "10": { "par": 4, "handicap": 4,  "yardage": 359 },
+    "11": { "par": 3, "handicap": 16, "yardage": 152 },
+    "12": { "par": 4, "handicap": 6,  "yardage": 290 },
+    "13": { "par": 3, "handicap": 10, "yardage": 196 },
+    "14": { "par": 3, "handicap": 14, "yardage": 177 },
+    "15": { "par": 4, "handicap": 8,  "yardage": 316 },
+    "16": { "par": 3, "handicap": 12, "yardage": 176 },
+    "17": { "par": 3, "handicap": 18, "yardage": 140 },
+    "18": { "par": 4, "handicap": 2,  "yardage": 397 }
+  }
+}
