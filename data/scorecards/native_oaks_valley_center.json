@@ -1,0 +1,98 @@
+{
+  "course_id": "native_oaks_valley_center",
+  "course_name": "Native Oaks Golf Course",
+  "tee": "Black (back)",
+  "source": "Black-tee card from the course's own site, nativeoaksgolfclub.com/scorecard/ (read from the raw HTML table): 6768 yds, par 72, 72.6/132; yardages check to 3388/3380/6768 and par to 36/36/72. Handicap set is a complete 1-18, odd on the front and even on the back. THIRD-PARTY CARDS DISAGREE AND ARE REJECTED. Handicaps: golfpass, opengolfapi, golfingrecord and stymie print 9,5,17,7,1,11,13,15,3 / 8,4,12,18,2,16,14,10,6, and greenskeeper.org (Woods_Valley_Golf_Club) prints a variant with the nines' odd/even flipped; the club's order differs from both and is used here. Yardages: 6707 (greenskeeper, golfpass, opengolfapi: hole 5 = 435, hole 11 = 484), 6670 (golflink: hole 11 = 447 as par 4, so par 71; golfingrecord: hole 9 = 547, hole 15 = 318), 6723 (stymie, a differently measured set). The club's 72.6/132 rating is also what stymie and SCGA carry for Black, while 72.2/131 goes with the older 6707 set. Par: OSM tags hole 5 as par 5 (giving 73); every card says par 4, used here. Geometry check: the four shortest tee_center-to-green_center holes are 3, 8, 13, 16, exactly the card's par 3s. Mapped OSM back tees run short of the card on several holes (5: 435 vs 460, 11: 482 vs 520, 15: 322 vs 350, 8: 148 vs 175), so OSM likely lacks some current Black tees; hole 17 runs long (434 vs 410). Card yardages are used for course_holes regardless.",
+  "holes": {
+    "1": {
+      "par": 4,
+      "handicap": 9,
+      "yardage": 399
+    },
+    "2": {
+      "par": 5,
+      "handicap": 7,
+      "yardage": 531
+    },
+    "3": {
+      "par": 3,
+      "handicap": 13,
+      "yardage": 154
+    },
+    "4": {
+      "par": 4,
+      "handicap": 11,
+      "yardage": 411
+    },
+    "5": {
+      "par": 4,
+      "handicap": 1,
+      "yardage": 460
+    },
+    "6": {
+      "par": 4,
+      "handicap": 3,
+      "yardage": 377
+    },
+    "7": {
+      "par": 4,
+      "handicap": 17,
+      "yardage": 329
+    },
+    "8": {
+      "par": 3,
+      "handicap": 15,
+      "yardage": 175
+    },
+    "9": {
+      "par": 5,
+      "handicap": 5,
+      "yardage": 552
+    },
+    "10": {
+      "par": 4,
+      "handicap": 8,
+      "yardage": 384
+    },
+    "11": {
+      "par": 5,
+      "handicap": 6,
+      "yardage": 520
+    },
+    "12": {
+      "par": 4,
+      "handicap": 16,
+      "yardage": 375
+    },
+    "13": {
+      "par": 3,
+      "handicap": 18,
+      "yardage": 154
+    },
+    "14": {
+      "par": 4,
+      "handicap": 2,
+      "yardage": 435
+    },
+    "15": {
+      "par": 4,
+      "handicap": 14,
+      "yardage": 350
+    },
+    "16": {
+      "par": 3,
+      "handicap": 12,
+      "yardage": 205
+    },
+    "17": {
+      "par": 4,
+      "handicap": 10,
+      "yardage": 410
+    },
+    "18": {
+      "par": 5,
+      "handicap": 4,
+      "yardage": 547
+    }
+  }
+}
