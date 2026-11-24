@@ -6,11 +6,15 @@
 //                   name, properties jsonb, geometry geometry(GEOMETRY,4326) NOT NULL,
 //                   geometry_geojson text GENERATED from st_asgeojson(geometry))
 //
+//   course_elevation_grids(course_id pk fk, grid_b64, format_version, byte_size, cell_m, source,
+//                          one_meter_lidar_fraction, generated_at, updated_at)
+//
 // Notes:
 // - hole_number is NOT NULL, so features without a hole_number are skipped (server-side).
 // - geometry_geojson is a generated column and is never written.
 // - No natural unique key on course_features, so re-upload = delete-by-course_id then insert.
 import pg from 'pg';
+import { buildElevationGrid, gridRow } from './elevation.js';
 
 const SLUG = /^[a-z0-9_]+$/;
 
@@ -51,9 +55,44 @@ function buildHoleRows(courseId, geojson, scorecard) {
   return rows.sort((a, b) => a.hole - b.hole);
 }
 
+async function upsertElevationGrid(client, courseId, built) {
+  const r = gridRow(built);
+  await client.query(
+    `insert into course_elevation_grids
+       (course_id, grid_b64, format_version, byte_size, cell_m, source, one_meter_lidar_fraction, generated_at, updated_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, now())
+     on conflict (course_id) do update set
+       grid_b64 = excluded.grid_b64, format_version = excluded.format_version,
+       byte_size = excluded.byte_size, cell_m = excluded.cell_m, source = excluded.source,
+       one_meter_lidar_fraction = excluded.one_meter_lidar_fraction,
+       generated_at = excluded.generated_at, updated_at = now()`,
+    [courseId, r.grid_b64, r.format_version, r.byte_size, r.cell_m, r.source,
+     r.one_meter_lidar_fraction, r.generated_at]
+  );
+}
+
+/** Upserts a prebuilt grid on its own (backfills; scripts/build-elevation.mjs). */
+export async function uploadElevationGrid({ connectionString, courseId, built, commit = true }) {
+  if (!connectionString) throw new Error('Missing SUPABASE_CONNECTION_STRING');
+  if (!SLUG.test(courseId || '')) throw new Error(`course_id must match ${SLUG} (got "${courseId}")`);
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+  try {
+    await client.query('begin');
+    await upsertElevationGrid(client, courseId, built);
+    await client.query(commit ? 'commit' : 'rollback');
+    return { committed: !!commit };
+  } catch (err) {
+    await client.query('rollback').catch(() => {});
+    throw err;
+  } finally {
+    await client.end();
+  }
+}
+
 export async function uploadCourse({
   connectionString, courseId, courseName, city = null, state = null,
-  geojson, replace = true, commit = true, scorecard = null,
+  geojson, replace = true, commit = true, scorecard = null, elevation = true,
 }) {
   if (!connectionString) throw new Error('Missing SUPABASE_CONNECTION_STRING');
   if (!SLUG.test(courseId || '')) throw new Error(`course_id must match ${SLUG} (got "${courseId}")`);
@@ -61,6 +100,18 @@ export async function uploadCourse({
   const features = (geojson?.features || []).filter(f => f?.geometry);
   const eligible = features.filter(f => f.properties?.hole_number != null);
   const skipped = features.length - eligible.length;
+
+  // Elevation grid from USGS 3DEP over the uploaded features. Built before the transaction
+  // (network); a failure (e.g. outside the US) never blocks the course — the app then just
+  // shows no elevation for it.
+  let built = null, elevationError = null;
+  if (elevation && eligible.length) {
+    try {
+      built = await buildElevationGrid({ features: eligible }, courseId);
+    } catch (e) {
+      elevationError = e.message;
+    }
+  }
 
   const client = new pg.Client({ connectionString });
   await client.connect();
@@ -119,10 +170,15 @@ end $$;`);
       }
     }
 
+    if (built) await upsertElevationGrid(client, courseId, built);
+
     if (commit) await client.query('commit');
     else await client.query('rollback');
 
-    return { inserted: ins.rowCount, skipped, deleted, holesUpserted, total: features.length, committed: !!commit };
+    return {
+      inserted: ins.rowCount, skipped, deleted, holesUpserted, total: features.length, committed: !!commit,
+      elevation: built ? built.stats : null, elevationError,
+    };
   } catch (err) {
     await client.query('rollback').catch(() => {});
     throw err;

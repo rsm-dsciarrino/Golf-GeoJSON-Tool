@@ -110,7 +110,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'upload_to_supabase',
-      description: 'Upload the current map\'s GeoJSON to the Supabase PostGIS database (courses + course_features). Upserts the course row and replaces that course\'s features (delete-by-course_id then insert). Features without a hole_number are skipped (the column is NOT NULL). Set dry_run=true to validate inside a rolled-back transaction without persisting. Requires SUPABASE_CONNECTION_STRING in the project .env.',
+      description: 'Upload the current map\'s GeoJSON to the Supabase PostGIS database (courses + course_features + course_holes + course_elevation_grids). Upserts the course row and replaces that course\'s features (delete-by-course_id then insert). Features without a hole_number are skipped (the column is NOT NULL). Also builds the course\'s USGS 3DEP elevation grid for the Looper app (~10–30s; a failure, e.g. outside the US, is reported but doesn\'t block the upload). Set dry_run=true to validate inside a rolled-back transaction without persisting. Requires SUPABASE_CONNECTION_STRING in the project .env.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -120,6 +120,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           state: { type: 'string', description: 'State for the courses row (e.g. "CA").' },
           replace: { type: 'boolean', description: 'Delete existing features for this course_id before inserting (default true). If false, appends.' },
           dry_run: { type: 'boolean', description: 'Run the upload in a transaction and roll it back, reporting what would change without persisting (default false).' },
+          elevation: { type: 'boolean', description: 'Build and upload the elevation grid (default true). Set false to skip, e.g. for quick geometry-only re-uploads.' },
         },
         required: ['course_name'],
       },
@@ -679,6 +680,7 @@ out body geom;`;
         connectionString, courseId: course_id, courseName: course_name,
         city: args.city ?? null, state: args.state ?? null, geojson,
         replace: args.replace !== false, commit: !args.dry_run, scorecard,
+        elevation: args.elevation !== false,
       });
 
       const mode = r.committed ? 'Uploaded' : 'DRY RUN (rolled back) — would upload';
@@ -687,10 +689,16 @@ out body geom;`;
       const holesMsg = r.holesUpserted
         ? ` Populated ${r.holesUpserted} course_holes row(s) from scorecard.`
         : (scorecard ? '' : ` No scorecard at data/scorecards/${course_id}.json — course_holes left untouched.`);
+      const e = r.elevation;
+      const elevMsg = e
+        ? ` Elevation grid: ${e.rows}x${e.cols} @ 3m, ${Math.round(e.bytes / 1024)} KB, ${e.elevMinM}–${e.elevMaxM}m, ` +
+          `1m lidar ${e.oneMeterLidarFraction ?? 'unknown'}, ` +
+          (e.verifyMaxDiffM == null ? 'USGS spot check unavailable.' : `USGS spot check max Δ ${e.verifyMaxDiffM.toFixed(2)}m.`)
+        : (r.elevationError ? ` ⚠️ No elevation grid (${r.elevationError}) — the app will show no elevation for this course.` : '');
       return {
         content: [{
           type: 'text',
-          text: `${mode} ${r.inserted} feature(s) to course "${course_id}".${delMsg}${skipMsg}${holesMsg}`,
+          text: `${mode} ${r.inserted} feature(s) to course "${course_id}".${delMsg}${skipMsg}${holesMsg}${elevMsg}`,
         }],
       };
     }

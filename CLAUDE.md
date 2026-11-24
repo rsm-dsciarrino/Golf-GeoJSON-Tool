@@ -15,6 +15,9 @@ cd mcp-server && npm install && npm run dev
 # Import a course from OSM → live viewer (step 2 of the workflow below)
 node scripts/import-course.mjs "<Course Name>" <course_id> [--cap 60] [--radius 1500] [--no-push]
 
+# Elevation grids for courses already in data/ (backfill / rebuild / bundle file for the app)
+node scripts/build-elevation.mjs <course_id> [...] | --all  [--upload] [--dry-run] [--out <dir>] [--no-verify]
+
 # psql for Supabase introspection/verification (no client preinstalled)
 brew install libpq            # provides psql at $(brew --prefix)/opt/libpq/bin/psql
 export PATH="$(brew --prefix)/opt/libpq/bin:$PATH"
@@ -41,19 +44,24 @@ When the user asks to add a course, run this exact sequence. The two **review ga
 2. **🛑 GATE — user reviews & edits** the geometry in the viewer (numbers missing holes, fixes mis-assignments, draws missing fairways). Wait for them.
 3. **Scorecard** — look up the real scorecard (par + handicap + back-tee yardage per hole) and write `data/scorecards/<course_id>.json`. Do **not** estimate par or invent handicap — those come from the card (see scorecard-source notes below). Present the table.
 4. **🛑 GATE — user reviews the scorecard.** Wait for confirmation.
-5. **Upload** — re-fetch the (possibly edited) map and run `uploadCourse` (or the `upload_to_supabase` tool) with `commit:false` first (dry-run), then `commit:true`. This updates **all three tables**: `courses`, `course_features`, `course_holes`. Then **verify with psql** and report.
+5. **Upload** — re-fetch the (possibly edited) map and run `uploadCourse` (or the `upload_to_supabase` tool) with `commit:false` first (dry-run), then `commit:true`. This updates **all four tables**: `courses`, `course_features`, `course_holes`, and `course_elevation_grids` (the Looper app's plays-like elevation grid, built from USGS 3DEP during the upload — adds ~10–30s). Report the elevation line (size, 1m-lidar share, USGS spot-check Δ; expect ≤0.2m). A grid failure (e.g. a course outside the US) doesn't block the upload — say so: the app shows no elevation for that course. Then **verify with psql** and report.
 
 ### Data pipeline internals
 
 1. **Import** geocodes via Nominatim, queries Overpass (`map_to_area` on the geocoded golf_course way/relation) for `golf=*` features, maps OSM tags to feature types, assigns holes by nearest line, and POSTs to the viewer.
 2. **Derive markers**: `tee_center` (back tee), `green_front/center/back` placed where the line of play crosses the green edge.
-3. **Upload** (`uploadCourse`): one transaction that upserts the `courses` row, **replaces** that course's `course_features` (delete-by-`course_id` then insert), and upserts `course_holes` from the scorecard.
+3. **Upload** (`uploadCourse`): one transaction that upserts the `courses` row, **replaces** that course's `course_features` (delete-by-`course_id` then insert), upserts `course_holes` from the scorecard, and upserts `course_elevation_grids` with the grid `mcp-server/elevation.js` built beforehand (network calls stay outside the transaction).
 
 ### Supabase schema (target of uploads)
 
 - `courses(id text PK, name, city, state)`
 - `course_features(id uuid, course_id FK, hole_number int **NOT NULL**, feature_type, name, properties jsonb, geometry geometry(GEOMETRY,4326) **NOT NULL**, geometry_geojson text **GENERATED** from `st_asgeojson(geometry)`)
 - `course_holes(course_id, hole_number, par, handicap, yardage_front/center/back — all NOT NULL; UNIQUE(course_id, hole_number))`
+- `course_elevation_grids(course_id PK FK, grid_b64 text, format_version, byte_size, cell_m, source, one_meter_lidar_fraction, generated_at, updated_at)` — one `.elev` grid per course (migration lives in the Looper repo, `supabase/migrations/20261123120000_course_elevation_grids.sql`)
+
+### Elevation grids (`mcp-server/elevation.js`)
+
+Samples the USGS 3DEP bare-earth DEM (1m lidar where available, else 10m) on a 3m grid over the course's hole-numbered features (+40m padding) and encodes the `.elev` format the Looper app reads (`ElevationGrid.swift`). It's a port of Looper's `tools/elevation/build_elevation_grids.py` and must stay **byte-compatible** with it — verified cell-for-cell identical on Torrey Pines South. Gotchas: the 3DEP ImageServer silently stretches the requested extent unless pixels are square in the image SR, so cells are square in degrees and every tile's returned extent is checked; USGS endpoints return sporadic 5xx/502s, so requests retry with backoff. No dependencies (Node fetch + zlib). Courses outside 3DEP coverage (non-US) fail with a "no 3DEP data" error.
 
 Upload constraints that drive the code:
 - `hole_number` is NOT NULL → features without a hole are **skipped** (filtered in SQL).
