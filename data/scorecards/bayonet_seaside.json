@@ -1,0 +1,26 @@
+{
+  "course_id": "bayonet_seaside",
+  "course_name": "Bayonet Golf Course",
+  "tee": "Black (back)",
+  "source": "Official course card (bayonetblackhorse.com/bayonet/, image 2020_BY_Scorecard_edit.jpg, rev 03/21): Black tees 74.9/137, par 72, 7104 yds (3595 out / 3509 in; both nines sum to the printed OUT/IN). Men's handicaps 7-1-17-11-15-13-9-5-3 / 12-8-4-2-18-14-6-16-10, a complete 1-18 set (front odd, back even). Par, handicap and Black yardage identical hole-by-hole on golfpass.com. (A Hole19 search snippet gave a different front-nine index order; the official card overrides it.) Geometry check: the 4 shortest tee_center->green_center holes (14, 4, 17, 6) are the card's par 3s and the 4 longest (8, 1, 10, 18) its par 5s. OSM tags this course's hole lines 'Bayonet - N' (Black Horse next door uses plain numbers).",
+  "holes": {
+    "1":  { "par": 5, "handicap": 7,  "yardage": 548 },
+    "2":  { "par": 4, "handicap": 1,  "yardage": 436 },
+    "3":  { "par": 4, "handicap": 17, "yardage": 365 },
+    "4":  { "par": 3, "handicap": 11, "yardage": 201 },
+    "5":  { "par": 4, "handicap": 15, "yardage": 343 },
+    "6":  { "par": 3, "handicap": 13, "yardage": 221 },
+    "7":  { "par": 4, "handicap": 9,  "yardage": 392 },
+    "8":  { "par": 5, "handicap": 5,  "yardage": 613 },
+    "9":  { "par": 4, "handicap": 3,  "yardage": 476 },
+    "10": { "par": 5, "handicap": 12, "yardage": 517 },
+    "11": { "par": 4, "handicap": 8,  "yardage": 387 },
+    "12": { "par": 4, "handicap": 4,  "yardage": 419 },
+    "13": { "par": 4, "handicap": 2,  "yardage": 479 },
+    "14": { "par": 3, "handicap": 18, "yardage": 192 },
+    "15": { "par": 4, "handicap": 14, "yardage": 370 },
+    "16": { "par": 4, "handicap": 6,  "yardage": 393 },
+    "17": { "par": 3, "handicap": 16, "yardage": 225 },
+    "18": { "par": 5, "handicap": 10, "yardage": 527 }
+  }
+}

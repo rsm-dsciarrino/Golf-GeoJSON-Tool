@@ -1,0 +1,26 @@
+{
+  "course_id": "encinitas_ranch_encinitas",
+  "course_name": "Encinitas Ranch Golf Course",
+  "tee": "Blue (back)",
+  "source": "Blue-tee card (par 72, 6587 yds; 3191 out / 3396 in, both nines sum to the printed OUT/IN). Par + Blue yardage identical hole-by-hole on greenskeeper.org, golflink.com, 18birdies.com and golfpass.com. HANDICAP CONFLICT: 18birdies and golfpass give men's 15-7-11-5-9-17-3-1-13 / 4-10-18-2-8-16-12-6-14 (front odd, back even); greenskeeper gives 10-18-6-14-12-16-2-4-8 / 5-9-17-1-11-13-7-15-3 (front even, back odd). Both are complete 1-18 sets. Chose the 18birdies/golfpass set: greenskeeper's women's row matches golfpass's women's row exactly, so the sites carry the same card edition and greenskeeper's men's row is the outlier. The course site (encinitasranchgolf.com) has no scorecard page to confirm against (checked 2026-11-26). Geometry check: the 4 shortest tee_center->green_center holes (6, 12, 17, 2) are the card's par 3s and the 4 longest (11, 3, 9, 18) its par 5s.",
+  "holes": {
+    "1":  { "par": 4, "handicap": 15, "yardage": 347 },
+    "2":  { "par": 3, "handicap": 7,  "yardage": 192 },
+    "3":  { "par": 5, "handicap": 11, "yardage": 527 },
+    "4":  { "par": 4, "handicap": 5,  "yardage": 342 },
+    "5":  { "par": 4, "handicap": 9,  "yardage": 354 },
+    "6":  { "par": 3, "handicap": 17, "yardage": 160 },
+    "7":  { "par": 4, "handicap": 3,  "yardage": 365 },
+    "8":  { "par": 4, "handicap": 1,  "yardage": 407 },
+    "9":  { "par": 5, "handicap": 13, "yardage": 497 },
+    "10": { "par": 4, "handicap": 4,  "yardage": 442 },
+    "11": { "par": 5, "handicap": 10, "yardage": 540 },
+    "12": { "par": 3, "handicap": 18, "yardage": 169 },
+    "13": { "par": 4, "handicap": 2,  "yardage": 398 },
+    "14": { "par": 4, "handicap": 8,  "yardage": 433 },
+    "15": { "par": 4, "handicap": 16, "yardage": 373 },
+    "16": { "par": 4, "handicap": 12, "yardage": 361 },
+    "17": { "par": 3, "handicap": 6,  "yardage": 185 },
+    "18": { "par": 5, "handicap": 14, "yardage": 495 }
+  }
+}

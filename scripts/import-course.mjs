@@ -82,9 +82,23 @@ function segDist(pt, a, b) {
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 const dline = (pt, ln) => Math.min(...ln.slice(0, -1).map((_, i) => segDist(pt, ln[i], ln[i + 1])));
-const holeLines = elements
-  .filter(e => e.tags?.golf === 'hole' && /^\d+$/.test(e.tags.ref || ''))
-  .map(e => ({ ref: parseInt(e.tags.ref), ln: e.geometry.map(p => [p.lon, p.lat]) }));
+// Refs are usually plain numbers, but multi-course facilities may prefix them with the course
+// ("Bayonet - 5" next to Black Horse's plain "5"). If any prefix matches this course's name, use
+// only those lines; otherwise use plain numbers and drop lines prefixed for another course.
+const norm = s => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const allHoleLines = elements
+  .filter(e => e.tags?.golf === 'hole')
+  .map(e => {
+    const m = /^\s*(.*?)[\s#:-]*(\d+)\s*$/.exec(e.tags.ref || '');
+    return m && { prefix: norm(m[1]), ref: parseInt(m[2]), ln: e.geometry.map(p => [p.lon, p.lat]) };
+  })
+  .filter(Boolean);
+const nameWords = ` ${norm(courseName)} `;
+const ownPrefixed = allHoleLines.filter(h => h.prefix && nameWords.includes(` ${h.prefix} `));
+const holeLines = ownPrefixed.length ? ownPrefixed : allHoleLines.filter(h => !h.prefix);
+const otherPrefixed = allHoleLines.filter(h => h.prefix && !holeLines.includes(h)).length;
+if (ownPrefixed.length) console.log(`Using ${ownPrefixed.length} hole lines with ref prefix "${ownPrefixed[0].prefix}"`);
+if (otherPrefixed) console.log(`Ignored ${otherPrefixed} hole lines whose ref names another course`);
 
 // ---- multipolygon relations (golf=* on a type=multipolygon relation) ----
 // `out geom` returns each member way's points; a single ring can be split across several
