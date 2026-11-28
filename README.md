@@ -251,4 +251,12 @@ curl -X POST http://localhost:3000/geojson \
 
 ## License
 
-[MIT](LICENSE) © 2026 Devin Sciarrino
+The code in this repository is licensed under [MIT](LICENSE) © 2026 Devin Sciarrino.
+
+### Data attribution
+
+Course geometry in `data/` (and the course data uploaded from it) is derived from
+[OpenStreetMap](https://www.openstreetmap.org/copyright) data, © OpenStreetMap contributors,
+and is available under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/).
+It is **not** covered by the MIT license. Geocoding uses OpenStreetMap's Nominatim service.
+Elevation grids are built from the USGS 3D Elevation Program (3DEP), which is public domain.
