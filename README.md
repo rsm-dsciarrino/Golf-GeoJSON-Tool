@@ -248,3 +248,7 @@ curl -X POST http://localhost:3000/geojson \
     }]
   }'
 ```
+
+## License
+
+[MIT](LICENSE) © 2026 Devin Sciarrino

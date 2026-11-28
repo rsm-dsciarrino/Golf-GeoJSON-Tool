@@ -1,6 +1,7 @@
 {
   "name": "golf-geojson-viewer",
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "start": "node server.js",
