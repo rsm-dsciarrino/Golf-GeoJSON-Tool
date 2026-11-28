@@ -1,23 +1,27 @@
-MIT License
+Copyright (c) 2026 Devin Sciarrino. All rights reserved.
 
-Copyright (c) 2026 Devin Sciarrino
+This repository is made publicly visible for reference only. It is NOT open
+source.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Permitted use. You may view and read the source code in this repository,
+   including through GitHub's website and features as allowed by the GitHub
+   Terms of Service.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. Restrictions. Except as stated in section 1, no license is granted. Without
+   the prior written permission of the copyright holder, you may not copy,
+   modify, merge, publish, distribute, sublicense, sell, host, or otherwise
+   make available this software or any part or derivative of it, nor use it
+   in any product or service.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. Third-party data. Course geometry in the data/ directory is derived from
+   OpenStreetMap data, (c) OpenStreetMap contributors, and is licensed under
+   the Open Database License (ODbL) 1.0
+   (https://opendatacommons.org/licenses/odbl/). The restrictions in
+   section 2 do not apply to that data; it may be used under the terms of the
+   ODbL. See https://www.openstreetmap.org/copyright.
 
-The MIT license applies to the source code only. Course geometry data in `data/` is derived from OpenStreetMap (© OpenStreetMap contributors) and is licensed under the ODbL 1.0 — see https://www.openstreetmap.org/copyright.
+4. No warranty. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+For permission requests, contact the copyright holder through GitHub.
